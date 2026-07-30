@@ -29,18 +29,18 @@ export function EligibilityScoreRing({
   }, [score]);
 
   const getScoreColor = () => {
-    if (score >= 80) return { stroke: "#10b981", bg: "rgba(16,185,129,0.12)", text: "text-emerald-600" };
-    if (score >= 60) return { stroke: "#f59e0b", bg: "rgba(245,158,11,0.12)", text: "text-amber-600" };
-    if (score >= 40) return { stroke: "#f97316", bg: "rgba(249,115,22,0.12)", text: "text-orange-600" };
-    return { stroke: "#ef4444", bg: "rgba(239,68,68,0.12)", text: "text-red-600" };
+    if (score >= 80) return { stroke: "#d97706", bg: "rgba(217,119,6,0.12)", text: "text-amber-600 dark:text-amber-400" };
+    if (score >= 60) return { stroke: "#0d9488", bg: "rgba(13,148,136,0.12)", text: "text-teal-600 dark:text-teal-400" };
+    if (score >= 40) return { stroke: "#ea580c", bg: "rgba(234,88,12,0.12)", text: "text-orange-600 dark:text-orange-400" };
+    return { stroke: "#dc2626", bg: "rgba(220,38,38,0.12)", text: "text-red-600 dark:text-red-400" };
   };
 
   const getRiskBadge = () => {
     switch (riskLevel.toLowerCase()) {
       case "low":
-        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400";
-      case "medium":
         return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400";
+      case "medium":
+        return "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400";
       case "high":
         return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
       case "very high":

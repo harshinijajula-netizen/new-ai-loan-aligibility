@@ -200,8 +200,8 @@ function MetricCard({
   color: string;
 }) {
   const colorClasses: Record<string, string> = {
-    emerald: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400",
-    sky: "bg-sky-50 text-sky-600 dark:bg-sky-900/20 dark:text-sky-400",
+    emerald: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
+    sky: "bg-teal-50 text-teal-600 dark:bg-teal-900/20 dark:text-teal-400",
     amber: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400",
     red: "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400",
   };
@@ -221,8 +221,8 @@ function MetricCard({
 
 function FactorBar({ label, value }: { label: string; value: number }) {
   const getColor = (v: number) => {
-    if (v >= 80) return "bg-emerald-500";
-    if (v >= 60) return "bg-amber-500";
+    if (v >= 80) return "bg-amber-500";
+    if (v >= 60) return "bg-teal-500";
     if (v >= 40) return "bg-orange-500";
     return "bg-red-500";
   };
