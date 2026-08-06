@@ -1,0 +1,407 @@
+     1→   901→          <motion.div
+     2→   902→            initial={{ opacity: 0, y: 20 }}
+     3→   903→            whileInView={{ opacity: 1, y: 0 }}
+     4→   904→            viewport={{ once: true }}
+     5→   905→            className="text-center mb-12"
+     6→   906→          >
+     7→   907→            <div
+     8→   908→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+     9→   909→              style={{
+    10→   910→                background: "oklch(0.82 0.16 85 / 0.1)",
+    11→   911→                color: "oklch(0.82 0.16 85)",
+    12→   912→                border: "1px solid oklch(0.82 0.16 85 / 0.15)",
+    13→   913→              }}
+    14→   914→            >
+    15→   915→              <MessageSquareText className="size-3" />
+    16→   916→              User Feedback
+    17→   917→            </div>
+    18→   918→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+    19→   919→              What Our Users Say
+    20→   920→            </h2>
+    21→   921→            <p className="mt-2 max-w-md mx-auto text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+    22→   922→              Trusted by thousands of users across India for loan eligibility insights.
+    23→   923→            </p>
+    24→   924→          </motion.div>
+    25→   925→          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    26→   926→            {testimonials.map((t, i) => (
+    27→   927→              <motion.div
+    28→   928→                key={t.name}
+    29→   929→                initial={{ opacity: 0, y: 20 }}
+    30→   930→                whileInView={{ opacity: 1, y: 0 }}
+    31→   931→                viewport={{ once: true }}
+    32→   932→                transition={{ delay: i * 0.15 }}
+    33→   933→                className="glass gradient-border rounded-2xl p-6"
+    34→   934→              >
+    35→   935→                <div className="flex items-center gap-1 mb-4">
+    36→   936→                  {Array.from({ length: 5 }).map((_, si) => (
+    37→   937→                    <Star key={si} className="size-4 fill-current" style={{ color: "oklch(0.82 0.16 85)" }} />
+    38→   938→                  ))}
+    39→   939→                </div>
+    40→   940→                <Quote className="size-6 mb-3 opacity-30" style={{ color: "oklch(0.75 0.18 200)" }} />
+    41→   941→                <p className="text-sm leading-relaxed mb-5" style={{ color: "oklch(0.70 0.01 200)" }}>
+    42→   942→                  {t.quote}
+    43→   943→                </p>
+    44→   944→                <div className="flex items-center gap-3">
+    45→   945→                  <div
+    46→   946→                    className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
+    47→   947→                    style={{ background: t.color, color: t.textColor }}
+    48→   948→                  >
+    49→   949→                    {t.initials}
+    50→   950→                  </div>
+    51→   951→                  <div>
+    52→   952→                    <p className="text-sm font-semibold">{t.name}</p>
+    53→   953→                    <p className="text-xs" style={{ color: "oklch(0.55 0.02 220)" }}>{t.role}</p>
+    54→   954→                  </div>
+    55→   955→                </div>
+    56→   956→              </motion.div>
+    57→   957→            ))}
+    58→   958→          </div>
+    59→   959→        </div>
+    60→   960→      </section>
+    61→   961→
+    62→   962→      {/* ═══════════════════ FAQ SECTION ═══════════════════ */}
+    63→   963→      <section className="py-16 sm:py-20">
+    64→   964→        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    65→   965→          <motion.div
+    66→   966→            initial={{ opacity: 0, y: 20 }}
+    67→   967→            whileInView={{ opacity: 1, y: 0 }}
+    68→   968→            viewport={{ once: true }}
+    69→   969→            className="text-center mb-12"
+    70→   970→          >
+    71→   971→            <div
+    72→   972→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+    73→   973→              style={{
+    74→   974→                background: "oklch(0.75 0.18 200 / 0.1)",
+    75→   975→                color: "oklch(0.75 0.18 200)",
+    76→   976→                border: "1px solid oklch(0.75 0.18 200 / 0.15)",
+    77→   977→              }}
+    78→   978→            >
+    79→   979→              <MessageSquareText className="size-3" />
+    80→   980→              FAQs
+    81→   981→            </div>
+    82→   982→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+    83→   983→              Frequently Asked Questions
+    84→   984→            </h2>
+    85→   985→          </motion.div>
+    86→   986→          <motion.div
+    87→   987→            initial={{ opacity: 0, y: 20 }}
+    88→   988→            whileInView={{ opacity: 1, y: 0 }}
+    89→   989→            viewport={{ once: true }}
+    90→   990→          >
+    91→   991→            <Card className="glass">
+    92→   992→              <CardContent className="p-0">
+    93→   993→                <Accordion type="single" collapsible className="px-6">
+    94→   994→                  {faqs.map((faq, i) => (
+    95→   995→                    <AccordionItem key={i} value={`faq-${i}`}>
+    96→   996→                      <AccordionTrigger className="text-sm font-semibold text-left hover:no-underline">
+    97→   997→                        {faq.q}
+    98→   998→                      </AccordionTrigger>
+    99→   999→                      <AccordionContent className="text-sm leading-relaxed" style={{ color: "oklch(0.60 0.02 220)" }}>
+   100→  1000→                        {faq.a}
+   101→  1001→                      </AccordionContent>
+   102→  1002→                    </AccordionItem>
+   103→  1003→                  ))}
+   104→  1004→                </Accordion>
+   105→  1005→              </CardContent>
+   106→  1006→            </Card>
+   107→  1007→          </motion.div>
+   108→  1008→        </div>
+   109→  1009→      </section>
+   110→  1010→
+   111→  1011→      {/* ═══════════════════ RULES & REGULATIONS SECTION ═══════════════════ */}
+   112→  1012→      <section id="rules-section" className="py-16 sm:py-20" style={{ background: "oklch(0.15 0.035 265 / 0.5)" }}>
+   113→  1013→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   114→  1014→          <motion.div
+   115→  1015→            initial={{ opacity: 0, y: 20 }}
+   116→  1016→            whileInView={{ opacity: 1, y: 0 }}
+   117→  1017→            viewport={{ once: true }}
+   118→  1018→            className="text-center mb-12"
+   119→  1019→          >
+   120→  1020→            <div
+   121→  1021→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+   122→  1022→              style={{
+   123→  1023→                background: "oklch(0.75 0.18 200 / 0.1)",
+   124→  1024→                color: "oklch(0.75 0.18 200)",
+   125→  1025→                border: "1px solid oklch(0.75 0.18 200 / 0.15)",
+   126→  1026→              }}
+   127→  1027→            >
+   128→  1028→              <Scale className="size-3" />
+   129→  1029→              Legal & Compliance
+   130→  1030→            </div>
+   131→  1031→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   132→  1032→              Rules & Regulations
+   133→  1033→            </h2>
+   134→  1034→            <p className="mt-2 max-w-lg mx-auto text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   135→  1035→              Please review our policies carefully before using LoanIQ. By using this platform, you agree to the following terms and conditions.
+   136→  1036→            </p>
+   137→  1037→          </motion.div>
+   138→  1038→
+   139→  1039→          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+   140→  1040→            {/* Accordion */}
+   141→  1041→            <div className="lg:col-span-3">
+   142→  1042→              <Card className="glass">
+   143→  1043→                <CardContent className="p-0">
+   144→  1044→                  <Accordion type="multiple" className="px-6">
+   145→  1045→                    <AccordionItem value="terms">
+   146→  1046→                      <AccordionTrigger className="text-base font-semibold gap-3">
+   147→  1047→                        <div className="flex items-center gap-2.5">
+   148→  1048→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+   149→  1049→                            <FileText className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   150→  1050→                          </div>
+   151→  1051→                          Terms of Service
+   152→  1052→                        </div>
+   153→  1053→                      </AccordionTrigger>
+   154→  1054→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+   155→  1055→                        <p>By accessing and using LoanIQ (&quot;the Platform&quot;), you accept and agree to be bound by these Terms of Service. If you do not agree, you must not use the Platform.</p>
+   156→  1056→                        <p><strong className="text-foreground">1. Eligibility:</strong> You must be at least 18 years of age and have the legal capacity to enter into binding agreements. You are responsible for ensuring that your use of the Platform complies with all applicable local, state, national, and international laws.</p>
+   157→  1057→                        <p><strong className="text-foreground">2. Purpose of Use:</strong> LoanIQ provides AI-generated loan eligibility assessments for informational and educational purposes only. The Platform does not guarantee loan approval, offer loans, or act as a licensed financial advisor, lender, or broker.</p>
+   158→  1058→                        <p><strong className="text-foreground">3. Accuracy of Information:</strong> You are solely responsible for the accuracy and completeness of the information you provide. Inaccurate, incomplete, or misleading data will result in unreliable assessments.</p>
+   159→  1059→                        <p><strong className="text-foreground">4. Modification of Terms:</strong> We reserve the right to modify these terms at any time. Continued use of the Platform after changes constitutes acceptance of the revised terms.</p>
+   160→  1060→                      </AccordionContent>
+   161→  1061→                    </AccordionItem>
+   162→  1062→
+   163→  1063→                    <AccordionItem value="privacy">
+   164→  1064→                      <AccordionTrigger className="text-base font-semibold gap-3">
+   165→  1065→                        <div className="flex items-center gap-2.5">
+   166→  1066→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+   167→  1067→                            <Lock className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   168→  1068→                          </div>
+   169→  1069→                          Privacy & Data Protection
+   170→  1070→                        </div>
+   171→  1071→                      </AccordionTrigger>
+   172→  1072→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+   173→  1073→                        <p>LoanIQ is committed to protecting your personal and financial information. Our data practices comply with applicable data protection regulations.</p>
+   174→  1074→                        <p><strong className="text-foreground">1. Data Collection:</strong> We collect only the information you voluntarily provide through the eligibility form, including name, income details, credit score, employment information, and loan preferences. No data is collected without your explicit input.</p>
+   175→  1075→                        <p><strong className="text-foreground">2. Data Storage:</strong> All data is stored locally on our secure servers with industry-standard encryption. Your information is never sold, rented, or shared with third parties for marketing purposes.</p>
+   176→  1076→                        <p><strong className="text-foreground">3. Data Retention:</strong> Your eligibility check history is retained on our servers for a maximum of 90 days, after which it is automatically and permanently deleted. You may request immediate deletion at any time.</p>
+   177→  1077→                        <p><strong className="text-foreground">4. Cookies & Tracking:</strong> We use minimal, essential cookies for platform functionality only. We do not use tracking cookies, analytics trackers, or third-party advertising pixels.</p>
+   178→  1078→                        <p><strong className="text-foreground">5. Your Rights:</strong> You have the right to access, correct, delete, or export your personal data at any time by contacting us or using the in-platform delete functionality.</p>
+   179→  1079→                      </AccordionContent>
+   180→  1080→                    </AccordionItem>
+   181→  1081→
+   182→  1082→                    <AccordionItem value="disclaimer">
+   183→  1083→                      <AccordionTrigger className="text-base font-semibold gap-3">
+   184→  1084→                        <div className="flex items-center gap-2.5">
+   185→  1085→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+   186→  1086→                            <AlertTriangle className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   187→  1087→                          </div>
+   188→  1088→                          Disclaimer & Limitations
+   189→  1089→                        </div>
+   190→  1090→                      </AccordionTrigger>
+   191→  1091→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+   192→  1092→                        <p>The information provided by LoanIQ is generated by artificial intelligence and is intended solely for general informational purposes.</p>
+   193→  1093→                        <p><strong className="text-foreground">1. Not Financial Advice:</strong> LoanIQ does not provide financial advice, credit counseling, or loan brokerage services. The eligibility assessment should not be used as the sole basis for any financial decision.</p>
+   194→  1094→                        <p><strong className="text-foreground">2. No Guarantee of Approval:</strong> An eligibility score from LoanIQ does not guarantee that any financial institution will approve your loan application. Actual approval depends on the lender&apos;s specific criteria, verification processes, and current policies.</p>
+   195→  1095→                        <p><strong className="text-foreground">3. Accuracy Limitations:</strong> While we strive for accuracy, AI-generated assessments may contain errors or may not reflect the most current lending standards. Interest rates and maximum loan amounts are estimates only.</p>
+   196→  1096→                        <p><strong className="text-foreground">4. Liability:</strong> LoanIQ, its developers, and affiliates shall not be held liable for any financial losses, missed opportunities, or decisions made based on the information provided by this Platform.</p>
+   197→  1097→                      </AccordionContent>
+   198→  1098→                    </AccordionItem>
+   199→  1099→
+   200→  1100→                    <AccordionItem value="ai-methodology">
+   201→  1101→                      <AccordionTrigger className="text-base font-semibold gap-3">
+   202→  1102→                        <div className="flex items-center gap-2.5">
+   203→  1103→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+   204→  1104→                            <Brain className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   205→  1105→                          </div>
+   206→  1106→                          AI Analysis Methodology
+   207→  1107→                        </div>
+   208→  1108→                      </AccordionTrigger>
+   209→  1109→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+   210→  1110→                        <p>Understanding how our AI evaluates your loan eligibility helps you interpret results accurately.</p>
+   211→  1111→                        <p><strong className="text-foreground">1. Factors Evaluated:</strong> Our AI analyzes five key factors: Credit Score quality, Income Stability, Debt-to-Income Ratio (DTI), Loan-to-Income Ratio, and Employment Stability. Each factor is scored 0-100.</p>
+   212→  1112→                        <p><strong className="text-foreground">2. Scoring Model:</strong> The overall eligibility score (0-100) is a weighted composite of all individual factor scores. The weighting considers industry-standard lending practices but may differ from any specific lender&apos;s model.</p>
+   213→  1113→                        <p><strong className="text-foreground">3. Risk Classification:</strong> Scores are categorized as Low Risk (80-100), Medium Risk (60-79), High Risk (40-59), and Very High Risk (0-39). These categories are for guidance only.</p>
+   214→  1114→                        <p><strong className="text-foreground">4. Rate Estimation:</strong> Recommended interest rates are approximate estimates based on the AI&apos;s assessment. Actual rates depend on the lender, prevailing market conditions, and your complete application.</p>
+   215→  1115→                        <p><strong className="text-foreground">5. Continuous Improvement:</strong> Our AI model is regularly updated to reflect changing financial regulations and lending standards. However, there may be a lag between industry changes and model updates.</p>
+   216→  1116→                      </AccordionContent>
+   217→  1117→                    </AccordionItem>
+   218→  1118→
+   219→  1119→                    <AccordionItem value="user-responsibilities">
+   220→  1120→                      <AccordionTrigger className="text-base font-semibold gap-3">
+   221→  1121→                        <div className="flex items-center gap-2.5">
+   222→  1122→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+   223→  1123→                            <Users className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   224→  1124→                          </div>
+   225→  1125→                          User Responsibilities
+   226→  1126→                        </div>
+   227→  1127→                      </AccordionTrigger>
+   228→  1128→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+   229→  1129→                        <p>As a user of LoanIQ, you acknowledge and accept the following responsibilities.</p>
+   230→  1130→                        <p><strong className="text-foreground">1. Honest Disclosure:</strong> You must provide accurate, current, and complete information. Deliberately providing false information undermines the reliability of the assessment.</p>
+   231→  1131→                        <p><strong className="text-foreground">2. Professional Consultation:</strong> You are strongly encouraged to consult with a licensed financial advisor, loan officer, or credit counselor before making any loan-related decisions based on our assessments.</p>
+   232→  1132→                        <p><strong className="text-foreground">3. Account Security:</strong> You are responsible for maintaining the confidentiality of your session and device. Do not share your eligibility results with unauthorized parties.</p>
+   233→  1133→                        <p><strong className="text-foreground">4. Fair Use:</strong> The Platform is designed for personal, non-commercial use. Automated or systematic use of the Platform, including API scraping or bulk submissions, is strictly prohibited.</p>
+   234→  1134→                      </AccordionContent>
+   235→  1135→                    </AccordionItem>
+   236→  1136→
+   237→  1137→                    <AccordionItem value="third-party">
+   238→  1138→                      <AccordionTrigger className="text-base font-semibold gap-3">
+   239→  1139→                        <div className="flex items-center gap-2.5">
+   240→  1140→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+   241→  1141→                            <Globe className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   242→  1142→                          </div>
+   243→  1143→                          Third-Party Disclosures
+   244→  1144→                        </div>
+   245→  1145→                      </AccordionTrigger>
+   246→  1146→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+   247→  1147→                        <p>We are transparent about any circumstances under which your data may be shared.</p>
+   248→  1148→                        <p><strong className="text-foreground">1. No Selling of Data:</strong> LoanIQ does not sell, trade, or monetize your personal or financial data under any circumstances.</p>
+   249→  1149→                        <p><strong className="text-foreground">2. Legal Requirements:</strong> We may disclose information if required by law, regulation, legal process, or governmental request. We will notify you to the extent legally permissible.</p>
+   250→  1150→                        <p><strong className="text-foreground">3. Platform Providers:</strong> Data may be shared with our infrastructure and AI service providers solely for the purpose of delivering the Platform&apos;s functionality. These providers are contractually bound to maintain data confidentiality.</p>
+   251→  1151→                        <p><strong className="text-foreground">4. Aggregate Statistics:</strong> Anonymized, aggregated data may be used for platform improvement, research, and statistical analysis. No individual user can be identified from such data.</p>
+   252→  1152→                      </AccordionContent>
+   253→  1153→                    </AccordionItem>
+   254→  1154→                  </Accordion>
+   255→  1155→                </CardContent>
+   256→  1156→              </Card>
+   257→  1157→            </div>
+   258→  1158→
+   259→  1159→            {/* Side Info Cards */}
+   260→  1160→            <div className="lg:col-span-2 space-y-6">
+   261→  1161→              <motion.div
+   262→  1162→                initial={{ opacity: 0, y: 15 }}
+   263→  1163→                whileInView={{ opacity: 1, y: 0 }}
+   264→  1164→                viewport={{ once: true }}
+   265→  1165→              >
+   266→  1166→                <Card className="glass hover:scale-[1.01] transition-transform duration-300">
+   267→  1167→                  <CardContent className="pt-6">
+   268→  1168→                    <div className="flex items-center gap-3 mb-4">
+   269→  1169→                      <div className="p-2 rounded-xl" style={{ background: "oklch(0.75 0.18 200 / 0.1)", border: "1px solid oklch(0.75 0.18 200 / 0.12)" }}>
+   270→  1170→                        <Shield className="size-5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   271→  1171→                      </div>
+   272→  1172→                      <h3 className="font-semibold">Compliance Standards</h3>
+   273→  1173→                    </div>
+   274→  1174→                    <ul className="space-y-2.5 text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   275→  1175→                      <li className="flex items-start gap-2">
+   276→  1176→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   277→  1177→                        Compliant with general data protection principles
+   278→  1178→                      </li>
+   279→  1179→                      <li className="flex items-start gap-2">
+   280→  1180→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   281→  1181→                        AES-256 encryption for data at rest
+   282→  1182→                      </li>
+   283→  1183→                      <li className="flex items-start gap-2">
+   284→  1184→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   285→  1185→                        TLS 1.3 for data in transit
+   286→  1186→                      </li>
+   287→  1187→                      <li className="flex items-start gap-2">
+   288→  1188→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   289→  1189→                        Automated data purging after 90 days
+   290→  1190→                      </li>
+   291→  1191→                      <li className="flex items-start gap-2">
+   292→  1192→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   293→  1193→                        No third-party data sharing for marketing
+   294→  1194→                      </li>
+   295→  1195→                    </ul>
+   296→  1196→                  </CardContent>
+   297→  1197→                </Card>
+   298→  1198→              </motion.div>
+   299→  1199→
+   300→  1200→              <motion.div
+   301→  1201→                initial={{ opacity: 0, y: 15 }}
+   302→  1202→                whileInView={{ opacity: 1, y: 0 }}
+   303→  1203→                viewport={{ once: true }}
+   304→  1204→                transition={{ delay: 0.1 }}
+   305→  1205→              >
+   306→  1206→                <Card className="glass hover:scale-[1.01] transition-transform duration-300">
+   307→  1207→                  <CardContent className="pt-6">
+   308→  1208→                    <div className="flex items-center gap-3 mb-4">
+   309→  1209→                      <div className="p-2 rounded-xl" style={{ background: "oklch(0.75 0.18 200 / 0.1)", border: "1px solid oklch(0.75 0.18 200 / 0.12)" }}>
+   310→  1210→                        <Eye className="size-5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   311→  1211→                      </div>
+   312→  1212→                      <h3 className="font-semibold">Your Rights</h3>
+   313→  1213→                    </div>
+   314→  1214→                    <ul className="space-y-2.5 text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   315→  1215→                      <li className="flex items-start gap-2">
+   316→  1216→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   317→  1217→                        Right to access your stored data
+   318→  1218→                      </li>
+   319→  1219→                      <li className="flex items-start gap-2">
+   320→  1220→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   321→  1221→                        Right to request immediate data deletion
+   322→  1222→                      </li>
+   323→  1223→                      <li className="flex items-start gap-2">
+   324→  1224→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   325→  1225→                        Right to correct inaccurate information
+   326→  1226→                      </li>
+   327→  1227→                      <li className="flex items-start gap-2">
+   328→  1228→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   329→  1229→                        Right to export your check history
+   330→  1230→                      </li>
+   331→  1231→                      <li className="flex items-start gap-2">
+   332→  1232→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   333→  1233→                        Right to opt out at any time
+   334→  1234→                      </li>
+   335→  1235→                    </ul>
+   336→  1236→                  </CardContent>
+   337→  1237→                </Card>
+   338→  1238→              </motion.div>
+   339→  1239→
+   340→  1240→              <motion.div
+   341→  1241→                initial={{ opacity: 0, y: 15 }}
+   342→  1242→                whileInView={{ opacity: 1, y: 0 }}
+   343→  1243→                viewport={{ once: true }}
+   344→  1244→                transition={{ delay: 0.2 }}
+   345→  1245→              >
+   346→  1246→                <Card className="glass hover:scale-[1.01] transition-transform duration-300">
+   347→  1247→                  <CardContent className="pt-6">
+   348→  1248→                    <div className="flex items-center gap-3 mb-4">
+   349→  1249→                      <div className="p-2 rounded-xl" style={{ background: "oklch(0.75 0.18 200 / 0.1)", border: "1px solid oklch(0.75 0.18 200 / 0.12)" }}>
+   350→  1250→                        <Database className="size-5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   351→  1251→                      </div>
+   352→  1252→                      <h3 className="font-semibold">Data Handling</h3>
+   353→  1253→                    </div>
+   354→  1254→                    <ul className="space-y-2.5 text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   355→  1255→                      <li className="flex items-start gap-2">
+   356→  1256→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   357→  1257→                        Data stored locally on encrypted servers
+   358→  1258→                      </li>
+   359→  1259→                      <li className="flex items-start gap-2">
+   360→  1260→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   361→  1261→                        No cloud-based third-party storage
+   362→  1262→                      </li>
+   363→  1263→                      <li className="flex items-start gap-2">
+   364→  1264→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   365→  1265→                        Session-based processing, no persistent cookies
+   366→  1266→                      </li>
+   367→  1267→                      <li className="flex items-start gap-2">
+   368→  1268→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+   369→  1269→                        Minimal data collection principle applied
+   370→  1270→                      </li>
+   371→  1271→                    </ul>
+   372→  1272→                  </CardContent>
+   373→  1273→                </Card>
+   374→  1274→              </motion.div>
+   375→  1275→            </div>
+   376→  1276→          </div>
+   377→  1277→        </div>
+   378→  1278→      </section>
+   379→  1279→
+   380→  1280→      {/* ═══════════════════ FOOTER ═══════════════════ */}
+   381→  1281→      <footer className="glass-strong mt-auto">
+   382→  1282→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+   383→  1283→          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+   384→  1284→            <div className="flex items-center gap-2">
+   385→  1285→              <div className="p-1 rounded-md" style={{ background: "oklch(0.75 0.18 200)" }}>
+   386→  1286→                <Shield className="size-3.5" style={{ color: "oklch(0.13 0.04 265)" }} />
+   387→  1287→              </div>
+   388→  1288→              <span className="text-sm font-semibold">
+   389→  1289→                Loan<span style={{ color: "oklch(0.75 0.18 200)" }}>IQ</span>
+   390→  1290→              </span>
+   391→  1291→            </div>
+   392→  1292→            <p className="text-xs text-center max-w-sm" style={{ color: "oklch(0.50 0.02 220)" }}>
+   393→  1293→              AI-powered loan eligibility analysis. Results are for informational purposes only and do not constitute financial advice or guarantee loan approval.
+   394→  1294→            </p>
+   395→  1295→            <p className="text-xs" style={{ color: "oklch(0.50 0.02 220)" }}>
+   396→  1296→              &copy; {new Date().getFullYear()} LoanIQ. All rights reserved.
+   397→  1297→            </p>
+   398→  1298→          </div>
+   399→  1299→        </div>
+   400→  1300→      </footer>
+   401→  1301→
+   402→  1302→      {/* ═══════════════════ CHATBOT ═══════════════════ */}
+   403→  1303→      <Chatbot />
+   404→  1304→    </div>
+   405→  1305→  );
+   406→  1306→}
+   407→  1307→

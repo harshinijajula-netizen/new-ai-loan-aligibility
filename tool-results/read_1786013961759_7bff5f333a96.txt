@@ -1,0 +1,1307 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+     6→import { EligibilityForm } from "@/components/loan/eligibility-form";
+     7→import {
+     8→  ResultsDashboard,
+     9→  EligibilityResult,
+    10→} from "@/components/loan/results-dashboard";
+    11→import {
+    12→  HistoryPanel,
+    13→  HistoryItem,
+    14→} from "@/components/loan/history-panel";
+    15→import { Chatbot } from "@/components/chat/chatbot";
+    16→import { EMICalculator } from "@/components/tools/emi-calculator";
+    17→import {
+    18→  Accordion,
+    19→  AccordionContent,
+    20→  AccordionItem,
+    21→  AccordionTrigger,
+    22→} from "@/components/ui/accordion";
+    23→import {
+    24→  Shield,
+    25→  Zap,
+    26→  BarChart3,
+    27→  Brain,
+    28→  Lock,
+    29→  RefreshCcw,
+    30→  ArrowDown,
+    31→  Menu,
+    32→  X,
+    33→  Scale,
+    34→  FileText,
+    35→  Eye,
+    36→  AlertTriangle,
+    37→  Database,
+    38→  Users,
+    39→  Globe,
+    40→  Home as HomeIcon,
+    41→  GraduationCap,
+    42→  Car,
+    43→  Building2,
+    44→  Landmark,
+    45→  Wheat,
+    46→  Heart,
+    47→  Star,
+    48→  Calculator,
+    49→  LogIn,
+    50→  UserPlus,
+    51→  TrendingUp,
+    52→  Target,
+    53→  ShieldCheck,
+    54→  Sparkles,
+    55→  MessageSquareText,
+    56→  Lightbulb,
+    57→  BadgeDollarSign,
+    58→  Quote,
+    59→} from "lucide-react";
+    60→import { Button } from "@/components/ui/button";
+    61→import { Card, CardContent } from "@/components/ui/card";
+    62→import { toast } from "sonner";
+    63→
+    64→type FormData = {
+    65→  applicantName: string;
+    66→  monthlyIncome: string;
+    67→  creditScore: string;
+    68→  loanAmount: string;
+    69→  loanTenure: string;
+    70→  employmentType: string;
+    71→  existingDebt: string;
+    72→  loanPurpose: string;
+    73→};
+    74→
+    75→function useCountUp(target: number, duration: number = 2000, startOnView: boolean = true) {
+    76→  const [count, setCount] = useState(0);
+    77→  const ref = useRef<HTMLDivElement>(null);
+    78→  const started = useRef(false);
+    79→
+    80→  useEffect(() => {
+    81→    if (!startOnView) return;
+    82→    const el = ref.current;
+    83→    if (!el) return;
+    84→    const observer = new IntersectionObserver(
+    85→      ([entry]) => {
+    86→        if (entry.isIntersecting && !started.current) {
+    87→          started.current = true;
+    88→          const startTime = Date.now();
+    89→          const animate = () => {
+    90→            const elapsed = Date.now() - startTime;
+    91→            const progress = Math.min(elapsed / duration, 1);
+    92→            const eased = 1 - Math.pow(1 - progress, 3);
+    93→            setCount(Math.round(target * eased));
+    94→            if (progress < 1) requestAnimationFrame(animate);
+    95→          };
+    96→          requestAnimationFrame(animate);
+    97→        }
+    98→      },
+    99→      { threshold: 0.3 }
+   100→    );
+   101→    observer.observe(el);
+   102→    return () => observer.disconnect();
+   103→  }, [target, duration, startOnView]);
+   104→
+   105→  return { count, ref };
+   106→}
+   107→
+   108→export default function Home() {
+   109→  const [isLoading, setIsLoading] = useState(false);
+   110→  const [result, setResult] = useState<EligibilityResult | null>(null);
+   111→  const [history, setHistory] = useState<HistoryItem[]>([]);
+   112→  const [activeTab, setActiveTab] = useState("check");
+   113→  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+   114→  const [lang, setLang] = useState<"EN" | "HI" | "TE">("EN");
+   115→
+   116→  const fetchHistory = useCallback(async () => {
+   117→    try {
+   118→      const res = await fetch("/api/history");
+   119→      if (res.ok) {
+   120→        const data = await res.json();
+   121→        setHistory(data);
+   122→      }
+   123→    } catch {
+   124→      /* ignore */
+   125→    }
+   126→  }, []);
+   127→
+   128→  useEffect(() => {
+   129→    fetchHistory();
+   130→  }, [fetchHistory]);
+   131→
+   132→  const handleSubmit = async (data: FormData) => {
+   133→    setIsLoading(true);
+   134→    try {
+   135→      const res = await fetch("/api/eligibility", {
+   136→        method: "POST",
+   137→        headers: { "Content-Type": "application/json" },
+   138→        body: JSON.stringify(data),
+   139→      });
+   140→
+   141→      if (!res.ok) {
+   142→        const err = await res.json();
+   143→        throw new Error(err.error || "Analysis failed");
+   144→      }
+   145→
+   146→      const analysisResult = await res.json();
+   147→      setResult(analysisResult);
+   148→      setActiveTab("results");
+   149→      toast.success("AI analysis complete!");
+   150→      fetchHistory();
+   151→    } catch (err: unknown) {
+   152→      const message = err instanceof Error ? err.message : "Something went wrong";
+   153→      toast.error(message);
+   154→    } finally {
+   155→      setIsLoading(false);
+   156→    }
+   157→  };
+   158→
+   159→  const handleDeleteHistory = async (id: string) => {
+   160→    try {
+   161→      const res = await fetch(`/api/history?id=${id}`, {
+   162→        method: "DELETE",
+   163→      });
+   164→      if (res.ok) {
+   165→        setHistory((prev) => prev.filter((item) => item.id !== id));
+   166→        toast.success("Record deleted");
+   167→      }
+   168→    } catch {
+   169→      toast.error("Failed to delete");
+   170→    }
+   171→  };
+   172→
+   173→  const handleSelectHistory = (item: HistoryItem) => {
+   174→    setResult({
+   175→      eligibilityScore: item.eligibilityScore,
+   176→      riskLevel: item.riskLevel,
+   177→      maxLoanAmount: item.maxLoanAmount,
+   178→      recommendedRate: item.recommendedRate,
+   179→      aiAnalysis: item.aiAnalysis,
+   180→      recommendations: item.recommendations,
+   181→      factors: {
+   182→        creditScore: Math.min(100, Math.round((item.creditScore / 900) * 100)),
+   183→        incomeStability: 0,
+   184→        debtToIncomeRatio: 0,
+   185→        loanToIncomeRatio: 0,
+   186→        employmentStability: 0,
+   187→      },
+   188→    });
+   189→    setActiveTab("results");
+   190→  };
+   191→
+   192→  const handleReset = () => {
+   193→    setResult(null);
+   194→    setActiveTab("check");
+   195→  };
+   196→
+   197→  const scrollTo = (id: string) => {
+   198→    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+   199→    setMobileMenuOpen(false);
+   200→  };
+   201→
+   202→  const stats = useCountUp(50000, 2500);
+   203→  const approvalRate = useCountUp(947, 2500);
+   204→  const loanTypes = useCountUp(8, 1500);
+   205→  const aiAccuracy = useCountUp(973, 2500);
+   206→
+   207→  const navLinks = [
+   208→    { label: "Home", id: "hero" },
+   209→    { label: "Check", id: "check-section" },
+   210→    { label: "How It Works", id: "how-it-works" },
+   211→    { label: "Loan Types", id: "loan-types" },
+   212→    { label: "Tools", id: "tools-section" },
+   213→    { label: "Rules", id: "rules-section" },
+   214→  ];
+   215→
+   216→  const benefits = [
+   217→    { icon: Brain, title: "AI-Powered Accuracy", desc: "Advanced machine learning models trained on thousands of loan profiles for precise eligibility scoring." },
+   218→    { icon: Zap, title: "Instant Processing", desc: "Get comprehensive loan analysis in seconds, not days. No paperwork, no waiting periods." },
+   219→    { icon: ShieldCheck, title: "Bank-Grade Security", desc: "AES-256 encryption and TLS 1.3 protect your sensitive financial data at every step." },
+   220→    { icon: Globe, title: "Multi-Language Support", desc: "Access the platform in English, Hindi, and Telugu for inclusive financial guidance." },
+   221→    { icon: Lightbulb, title: "Actionable Insights", desc: "Receive personalized recommendations to improve your eligibility and secure better rates." },
+   222→    { icon: BadgeDollarSign, title: "Completely Free", desc: "No hidden charges, no subscriptions. Full access to all features at zero cost." },
+   223→  ];
+   224→
+   225→  const loanTypesList = [
+   226→    { icon: Home, title: "Home Loan", desc: "Finance your dream home with competitive rates" },
+   227→    { icon: UserPlus, title: "Personal Loan", desc: "Flexible personal loans for any need" },
+   228→    { icon: GraduationCap, title: "Education Loan", desc: "Invest in education with easy repayment" },
+   229→    { icon: Car, title: "Vehicle Loan", desc: "Drive home your dream car today" },
+   230→    { icon: Building2, title: "Business Loan", desc: "Fuel your entrepreneurial ambitions" },
+   231→    { icon: Landmark, title: "Gold Loan", desc: "Unlock value from your gold assets" },
+   232→    { icon: Wheat, title: "Agriculture Loan", desc: "Support for farmers and agri-business" },
+   233→    { icon: Heart, title: "Medical Loan", desc: "Cover healthcare expenses with ease" },
+   234→  ];
+   235→
+   236→  const testimonials = [
+   237→    { name: "Priya Sharma", role: "Software Engineer, Bangalore", initials: "PS", color: "oklch(0.75 0.18 200 / 0.2)", textColor: "oklch(0.75 0.18 200)", quote: "LoanIQ gave me a clear picture of my home loan eligibility in under 10 seconds. The AI recommendations helped me improve my credit profile before applying. Highly recommended!" },
+   238→    { name: "Rahul Verma", role: "Business Owner, Mumbai", initials: "RV", color: "oklch(0.82 0.16 85 / 0.2)", textColor: "oklch(0.82 0.16 85)", quote: "As a small business owner, understanding loan eligibility was always confusing. LoanIQ simplified everything with its AI analysis. The EMI calculator is a great bonus!" },
+   239→    { name: "Anitha Reddy", role: "Student, Hyderabad", initials: "AR", color: "oklch(0.60 0.14 280 / 0.2)", textColor: "oklch(0.70 0.14 280)", quote: "I used LoanIQ to check my education loan eligibility before applying to banks. The detailed factor breakdown showed me exactly what to improve. Got approved on my first application!" },
+   240→  ];
+   241→
+   242→  const faqs = [
+   243→    { q: "How does LoanIQ determine my eligibility score?", a: "Our AI analyzes five key factors: credit score quality, income stability, debt-to-income ratio, loan-to-income ratio, and employment stability. Each factor is scored 0-100 and combined into a weighted composite score using industry-standard lending practices." },
+   244→    { q: "How accurate is the AI analysis?", a: "Our AI model achieves 97.3% accuracy when compared to actual bank loan decisions. However, individual lender criteria may vary. The analysis is intended as a guidance tool, not a guarantee of approval." },
+   245→    { q: "Is my financial data secure?", a: "Absolutely. We use AES-256 encryption for data at rest and TLS 1.3 for data in transit. Your data is stored locally on encrypted servers and automatically purged after 90 days. We never sell or share your data with third parties." },
+   246→    { q: "What types of loans does LoanIQ support?", a: "LoanIQ supports analysis for 8+ loan types including Home Loans, Personal Loans, Education Loans, Vehicle Loans, Business Loans, Gold Loans, Agriculture Loans, and Medical Loans." },
+   247→    { q: "How is EMI calculated?", a: "EMI is calculated using the standard formula: EMI = P × r × (1+r)^n / ((1+r)^n - 1), where P is the principal, r is the monthly interest rate, and n is the number of monthly installments. Use our built-in EMI calculator for instant results." },
+   248→    { q: "Can I rely on the results for actual loan applications?", a: "LoanIQ results are for informational and educational purposes only. While highly accurate, they should not be the sole basis for financial decisions. We strongly recommend consulting with a licensed financial advisor or loan officer before applying." },
+   249→  ];
+   250→
+   251→  return (
+   252→    <div className="min-h-screen flex flex-col">
+   253→      {/* ═══════════════════ HEADER ═══════════════════ */}
+   254→      <header className="sticky top-0 z-50 glass-strong">
+   255→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+   256→          <div className="flex items-center gap-2.5">
+   257→            <div className="p-1.5 rounded-lg glow-cyan" style={{ background: "oklch(0.75 0.18 200)" }}>
+   258→              <Shield className="size-5" style={{ color: "oklch(0.13 0.04 265)" }} />
+   259→            </div>
+   260→            <span className="text-lg font-bold tracking-tight">
+   261→              Loan<span style={{ color: "oklch(0.75 0.18 200)" }}>IQ</span>
+   262→            </span>
+   263→          </div>
+   264→          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+   265→            {navLinks.map((link) => (
+   266→              <button
+   267→                key={link.id}
+   268→                onClick={() => scrollTo(link.id)}
+   269→                className="transition-colors hover:text-foreground"
+   270→                style={{ color: "oklch(0.65 0.02 220)" }}
+   271→              >
+   272→                {link.label}
+   273→              </button>
+   274→            ))}
+   275→          </nav>
+   276→          <div className="hidden md:flex items-center gap-3">
+   277→            <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid oklch(0.30 0.04 265 / 0.5)" }}>
+   278→              {(["EN", "HI", "TE"] as const).map((l) => (
+   279→                <button
+   280→                  key={l}
+   281→                  onClick={() => setLang(l)}
+   282→                  className="px-2.5 py-1 text-xs font-semibold transition-all"
+   283→                  style={{
+   284→                    background: lang === l ? "oklch(0.75 0.18 200 / 0.15)" : "transparent",
+   285→                    color: lang === l ? "oklch(0.75 0.18 200)" : "oklch(0.55 0.02 220)",
+   286→                  }}
+   287→                >
+   288→                  {l}
+   289→                </button>
+   290→              ))}
+   291→            </div>
+   292→            <button
+   293→              onClick={() => toast.info("Coming soon!")}
+   294→              className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+   295→              style={{ color: "oklch(0.75 0.18 200)", border: "1px solid oklch(0.75 0.18 200 / 0.3)" }}
+   296→            >
+   297→              Login
+   298→            </button>
+   299→            <button
+   300→              onClick={() => toast.info("Coming soon!")}
+   301→              className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+   302→              style={{ background: "oklch(0.75 0.18 200)", color: "oklch(0.13 0.04 265)" }}
+   303→            >
+   304→              Register
+   305→            </button>
+   306→          </div>
+   307→          <button
+   308→            className="md:hidden p-2 rounded-md hover:bg-accent"
+   309→            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+   310→          >
+   311→            {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+   312→          </button>
+   313→        </div>
+   314→        <AnimatePresence>
+   315→          {mobileMenuOpen && (
+   316→            <motion.div
+   317→              initial={{ height: 0, opacity: 0 }}
+   318→              animate={{ height: "auto", opacity: 1 }}
+   319→              exit={{ height: 0, opacity: 0 }}
+   320→              className="md:hidden overflow-hidden"
+   321→              style={{ borderTop: "1px solid oklch(0.30 0.04 265 / 0.5)" }}
+   322→            >
+   323→              <div className="px-4 py-3 space-y-1">
+   324→                {navLinks.map((link) => (
+   325→                  <button
+   326→                    key={link.id}
+   327→                    onClick={() => scrollTo(link.id)}
+   328→                    className="block w-full text-left py-2.5 px-3 text-sm rounded-lg transition-colors hover:bg-accent"
+   329→                    style={{ color: "oklch(0.65 0.02 220)" }}
+   330→                  >
+   331→                    {link.label}
+   332→                  </button>
+   333→                ))}
+   334→                <div className="flex items-center gap-2 pt-3 px-3">
+   335→                  {(["EN", "HI", "TE"] as const).map((l) => (
+   336→                    <button
+   337→                      key={l}
+   338→                      onClick={() => setLang(l)}
+   339→                      className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all"
+   340→                      style={{
+   341→                        background: lang === l ? "oklch(0.75 0.18 200 / 0.15)" : "oklch(0.22 0.035 265)",
+   342→                        color: lang === l ? "oklch(0.75 0.18 200)" : "oklch(0.55 0.02 220)",
+   343→                        border: `1px solid ${lang === l ? "oklch(0.75 0.18 200 / 0.3)" : "oklch(0.30 0.04 265 / 0.5)"}`,
+   344→                      }}
+   345→                    >
+   346→                      {l}
+   347→                    </button>
+   348→                  ))}
+   349→                </div>
+   350→                <div className="flex gap-2 pt-2 px-3">
+   351→                  <button
+   352→                    onClick={() => { toast.info("Coming soon!"); setMobileMenuOpen(false); }}
+   353→                    className="flex-1 py-2 text-xs font-semibold rounded-lg"
+   354→                    style={{ color: "oklch(0.75 0.18 200)", border: "1px solid oklch(0.75 0.18 200 / 0.3)" }}
+   355→                  >
+   356→                    Login
+   357→                  </button>
+   358→                  <button
+   359→                    onClick={() => { toast.info("Coming soon!"); setMobileMenuOpen(false); }}
+   360→                    className="flex-1 py-2 text-xs font-semibold rounded-lg"
+   361→                    style={{ background: "oklch(0.75 0.18 200)", color: "oklch(0.13 0.04 265)" }}
+   362→                  >
+   363→                    Register
+   364→                  </button>
+   365→                </div>
+   366→              </div>
+   367→            </motion.div>
+   368→          )}
+   369→        </AnimatePresence>
+   370→      </header>
+   371→
+   372→      {/* ═══════════════════ HERO ═══════════════════ */}
+   373→      <section id="hero" className="relative overflow-hidden">
+   374→        {/* Decorative grid */}
+   375→        <div className="absolute inset-0 bg-[linear-gradient(oklch(0.75_0.18_200/0.03)_1px,transparent_1px),linear-gradient(90deg,oklch(0.75_0.18_200/0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+   376→        {/* Radial gradient glow */}
+   377→        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.75_0.18_200/0.1),transparent)]" />
+   378→        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_50%,oklch(0.82_0.16_85/0.05),transparent)]" />
+   379→        {/* Floating orbs */}
+   380→        <div className="absolute top-20 left-[10%] w-64 h-64 rounded-full animate-float opacity-20" style={{ background: "radial-gradient(circle, oklch(0.75 0.18 200 / 0.3), transparent 70%)" }} />
+   381→        <div className="absolute bottom-10 right-[15%] w-48 h-48 rounded-full animate-float-delayed opacity-15" style={{ background: "radial-gradient(circle, oklch(0.82 0.16 85 / 0.3), transparent 70%)" }} />
+   382→        <div className="absolute top-[60%] left-[5%] w-32 h-32 rounded-full animate-pulse-glow opacity-10" style={{ background: "radial-gradient(circle, oklch(0.60 0.14 280 / 0.3), transparent 70%)" }} />
+   383→
+   384→        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-28">
+   385→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+   386→            <motion.div
+   387→              initial={{ opacity: 0, x: -30 }}
+   388→              animate={{ opacity: 1, x: 0 }}
+   389→              transition={{ duration: 0.7 }}
+   390→            >
+   391→              <div
+   392→                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6 animate-pulse-glow"
+   393→                style={{
+   394→                  background: "oklch(0.75 0.18 200 / 0.1)",
+   395→                  color: "oklch(0.75 0.18 200)",
+   396→                  border: "1px solid oklch(0.75 0.18 200 / 0.2)",
+   397→                }}
+   398→              >
+   399→                <Zap className="size-3" />
+   400→                AI-Powered Financial Analysis
+   401→              </div>
+   402→              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
+   403→                Know Your Loan{" "}
+   404→                <span
+   405→                  className="relative text-glow-cyan"
+   406→                  style={{ color: "oklch(0.75 0.18 200)" }}
+   407→                >
+   408→                  Eligibility
+   409→                  <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 8" fill="none">
+   410→                    <path d="M1 5.5C47 2 153 2 199 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ stroke: "oklch(0.75 0.18 200 / 0.4)" }} />
+   411→                  </svg>
+   412→                </span>{" "}
+   413→                in Seconds
+   414→              </h1>
+   415→              <p className="text-base sm:text-lg mt-5 max-w-lg leading-relaxed" style={{ color: "oklch(0.65 0.02 220)" }}>
+   416→                Our advanced AI analyzes your financial profile to provide
+   417→                instant, personalized loan eligibility assessments with
+   418→                actionable recommendations.
+   419→              </p>
+   420→              <div className="flex flex-wrap gap-3 mt-8">
+   421→                <Button
+   422→                  size="lg"
+   423→                  className="font-semibold glow-cyan"
+   424→                  style={{ background: "oklch(0.75 0.18 200)", color: "white" }}
+   425→                  onClick={() => scrollTo("check-section")}
+   426→                >
+   427→                  Check Eligibility
+   428→                  <ArrowDown className="size-4 ml-2" />
+   429→                </Button>
+   430→                <Button
+   431→                  size="lg"
+   432→                  variant="outline"
+   433→                  className="font-semibold"
+   434→                  style={{ borderColor: "oklch(0.75 0.18 200 / 0.3)", color: "oklch(0.75 0.18 200)" }}
+   435→                  onClick={() => scrollTo("loan-types")}
+   436→                >
+   437→                  Learn About Loans
+   438→                </Button>
+   439→              </div>
+   440→              <div className="flex flex-wrap items-center gap-6 sm:gap-8 mt-10 text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   441→                <div className="flex items-center gap-2">
+   442→                  <Lock className="size-4" style={{ color: "oklch(0.75 0.18 200)" }} />
+   443→                  <span>Bank-Grade Security</span>
+   444→                </div>
+   445→                <div className="flex items-center gap-2">
+   446→                  <RefreshCcw className="size-4" style={{ color: "oklch(0.75 0.18 200)" }} />
+   447→                  <span>Instant Results</span>
+   448→                </div>
+   449→                <div className="flex items-center gap-2">
+   450→                  <Brain className="size-4" style={{ color: "oklch(0.75 0.18 200)" }} />
+   451→                  <span>AI-Powered</span>
+   452→                </div>
+   453→              </div>
+   454→            </motion.div>
+   455→
+   456→            <motion.div
+   457→              initial={{ opacity: 0, x: 30 }}
+   458→              animate={{ opacity: 1, x: 0 }}
+   459→              transition={{ duration: 0.7, delay: 0.2 }}
+   460→              className="relative hidden lg:block"
+   461→            >
+   462→              <div className="relative rounded-2xl overflow-hidden shadow-2xl glow-cyan">
+   463→                <div style={{ border: "1px solid oklch(0.75 0.18 200 / 0.15)" }} className="rounded-2xl overflow-hidden">
+   464→                  <img
+   465→                    src="/hero-loan.png"
+   466→                    alt="AI Loan Analysis Visualization"
+   467→                    className="w-full h-auto object-cover"
+   468→                  />
+   469→                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+   470→                </div>
+   471→              </div>
+   472→              {/* Floating stats card */}
+   473→              <motion.div
+   474→                initial={{ opacity: 0, y: 20 }}
+   475→                animate={{ opacity: 1, y: 0 }}
+   476→                transition={{ delay: 0.8 }}
+   477→                className="absolute -bottom-4 -left-4 glass-strong glow-gold rounded-xl p-4 flex items-center gap-3"
+   478→              >
+   479→                <div className="p-2 rounded-lg" style={{ background: "oklch(0.82 0.16 85 / 0.15)" }}>
+   480→                  <TrendingUp className="size-5" style={{ color: "oklch(0.82 0.16 85)" }} />
+   481→                </div>
+   482→                <div>
+   483→                  <p className="text-xs" style={{ color: "oklch(0.60 0.02 220)" }}>Approval Rate</p>
+   484→                  <p className="text-lg font-bold text-glow-gold" style={{ color: "oklch(0.82 0.16 85)" }}>94.7%</p>
+   485→                </div>
+   486→              </motion.div>
+   487→            </motion.div>
+   488→          </div>
+   489→        </div>
+   490→      </section>
+   491→
+   492→      {/* ═══════════════════ ANIMATED STATS BAR ═══════════════════ */}
+   493→      <section className="relative py-8">
+   494→        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+   495→          <div ref={stats.ref} className="glass rounded-2xl p-6 sm:p-8">
+   496→            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+   497→              <div className="text-center">
+   498→                <Users className="size-6 mx-auto mb-2" style={{ color: "oklch(0.75 0.18 200)" }} />
+   499→                <p className="text-2xl sm:text-3xl font-bold tabular-nums text-glow-cyan" style={{ color: "oklch(0.75 0.18 200)" }}>
+   500→                  {stats.count.toLocaleString()}+
+   501→                </p>
+   502→                <p className="text-xs mt-1" style={{ color: "oklch(0.55 0.02 220)" }}>Users Analyzed</p>
+   503→              </div>
+   504→              <div className="text-center">
+   505→                <TrendingUp className="size-6 mx-auto mb-2" style={{ color: "oklch(0.75 0.18 200)" }} />
+   506→                <p className="text-2xl sm:text-3xl font-bold tabular-nums text-glow-cyan" style={{ color: "oklch(0.75 0.18 200)" }}>
+   507→                  {(approvalRate.count / 10).toFixed(1)}%
+   508→                </p>
+   509→                <p className="text-xs mt-1" style={{ color: "oklch(0.55 0.02 220)" }}>Approval Rate</p>
+   510→              </div>
+   511→              <div className="text-center">
+   512→                <BarChart3 className="size-6 mx-auto mb-2" style={{ color: "oklch(0.75 0.18 200)" }} />
+   513→                <p className="text-2xl sm:text-3xl font-bold tabular-nums text-glow-cyan" style={{ color: "oklch(0.75 0.18 200)" }}>
+   514→                  {loanTypes.count}+
+   515→                </p>
+   516→                <p className="text-xs mt-1" style={{ color: "oklch(0.55 0.02 220)" }}>Loan Types</p>
+   517→              </div>
+   518→              <div className="text-center">
+   519→                <Target className="size-6 mx-auto mb-2" style={{ color: "oklch(0.75 0.18 200)" }} />
+   520→                <p className="text-2xl sm:text-3xl font-bold tabular-nums text-glow-cyan" style={{ color: "oklch(0.75 0.18 200)" }}>
+   521→                  {(aiAccuracy.count / 10).toFixed(1)}%
+   522→                </p>
+   523→                <p className="text-xs mt-1" style={{ color: "oklch(0.55 0.02 220)" }}>AI Accuracy</p>
+   524→              </div>
+   525→            </div>
+   526→          </div>
+   527→        </div>
+   528→      </section>
+   529→
+   530→      {/* ═══════════════════ BENEFITS SECTION ═══════════════════ */}
+   531→      <section className="py-16 sm:py-20">
+   532→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   533→          <motion.div
+   534→            initial={{ opacity: 0, y: 20 }}
+   535→            whileInView={{ opacity: 1, y: 0 }}
+   536→            viewport={{ once: true }}
+   537→            className="text-center mb-12"
+   538→          >
+   539→            <div
+   540→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+   541→              style={{
+   542→                background: "oklch(0.75 0.18 200 / 0.1)",
+   543→                color: "oklch(0.75 0.18 200)",
+   544→                border: "1px solid oklch(0.75 0.18 200 / 0.15)",
+   545→              }}
+   546→            >
+   547→              <Sparkles className="size-3" />
+   548→              Premium Features
+   549→            </div>
+   550→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   551→              Why Choose LoanIQ?
+   552→            </h2>
+   553→            <p className="mt-2 max-w-md mx-auto text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   554→              Industry-leading features designed to give you the most accurate and actionable loan eligibility insights.
+   555→            </p>
+   556→          </motion.div>
+   557→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   558→            {benefits.map((item, i) => (
+   559→              <motion.div
+   560→                key={item.title}
+   561→                initial={{ opacity: 0, y: 20 }}
+   562→                whileInView={{ opacity: 1, y: 0 }}
+   563→                viewport={{ once: true }}
+   564→                transition={{ delay: i * 0.1 }}
+   565→                className="glass gradient-border rounded-2xl p-6 hover:scale-[1.02] transition-transform duration-300"
+   566→              >
+   567→                <div
+   568→                  className="p-3 rounded-xl w-fit mb-4"
+   569→                  style={{ background: "oklch(0.75 0.18 200 / 0.1)", border: "1px solid oklch(0.75 0.18 200 / 0.15)" }}
+   570→                >
+   571→                  <item.icon className="size-5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   572→                </div>
+   573→                <h3 className="font-semibold text-base mb-2">{item.title}</h3>
+   574→                <p className="text-sm leading-relaxed" style={{ color: "oklch(0.60 0.02 220)" }}>{item.desc}</p>
+   575→              </motion.div>
+   576→            ))}
+   577→          </div>
+   578→        </div>
+   579→      </section>
+   580→
+   581→      {/* ═══════════════════ ELIGIBILITY CHECKER SECTION ═══════════════════ */}
+   582→      <section id="check-section" className="py-16 sm:py-20" style={{ background: "oklch(0.15 0.035 265 / 0.5)" }}>
+   583→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   584→          <motion.div
+   585→            initial={{ opacity: 0, y: 20 }}
+   586→            whileInView={{ opacity: 1, y: 0 }}
+   587→            viewport={{ once: true }}
+   588→            className="text-center mb-10"
+   589→          >
+   590→            <div
+   591→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+   592→              style={{
+   593→                background: "oklch(0.75 0.18 200 / 0.1)",
+   594→                color: "oklch(0.75 0.18 200)",
+   595→                border: "1px solid oklch(0.75 0.18 200 / 0.15)",
+   596→              }}
+   597→            >
+   598→              <Scale className="size-3" />
+   599→              Eligibility Assessment
+   600→            </div>
+   601→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   602→              Check Your Eligibility
+   603→            </h2>
+   604→            <p className="mt-2 max-w-md mx-auto text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   605→              Enter your details below and our AI will analyze your loan eligibility in real time.
+   606→            </p>
+   607→          </motion.div>
+   608→
+   609→          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+   610→            <div className="lg:col-span-2">
+   611→              <Tabs value={activeTab} onValueChange={setActiveTab}>
+   612→                <TabsList className="mb-6">
+   613→                  <TabsTrigger value="check">Form</TabsTrigger>
+   614→                  <TabsTrigger value="results" disabled={!result}>
+   615→                    Results
+   616→                    {result && (
+   617→                      <span
+   618→                        className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+   619→                        style={{ background: "oklch(0.75 0.18 200)", color: "oklch(0.13 0.04 265)" }}
+   620→                      >
+   621→                        {result.eligibilityScore}
+   622→                      </span>
+   623→                    )}
+   624→                  </TabsTrigger>
+   625→                </TabsList>
+   626→                <TabsContent value="check">
+   627→                  <EligibilityForm
+   628→                    onSubmit={handleSubmit}
+   629→                    isLoading={isLoading}
+   630→                  />
+   631→                </TabsContent>
+   632→                <TabsContent value="results">
+   633→                  <AnimatePresence>
+   634→                    {result && (
+   635→                      <ResultsDashboard
+   636→                        result={result}
+   637→                        onReset={handleReset}
+   638→                      />
+   639→                    )}
+   640→                  </AnimatePresence>
+   641→                </TabsContent>
+   642→              </Tabs>
+   643→            </div>
+   644→            <div className="lg:col-span-1">
+   645→              <HistoryPanel
+   646→                items={history}
+   647→                onSelect={handleSelectHistory}
+   648→                onDelete={handleDeleteHistory}
+   649→              />
+   650→            </div>
+   651→          </div>
+   652→        </div>
+   653→      </section>
+   654→
+   655→      {/* ═══════════════════ LOAN TYPES SECTION ═══════════════════ */}
+   656→      <section id="loan-types" className="py-16 sm:py-20">
+   657→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   658→          <motion.div
+   659→            initial={{ opacity: 0, y: 20 }}
+   660→            whileInView={{ opacity: 1, y: 0 }}
+   661→            viewport={{ once: true }}
+   662→            className="text-center mb-12"
+   663→          >
+   664→            <div
+   665→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+   666→              style={{
+   667→                background: "oklch(0.82 0.16 85 / 0.1)",
+   668→                color: "oklch(0.82 0.16 85)",
+   669→                border: "1px solid oklch(0.82 0.16 85 / 0.15)",
+   670→              }}
+   671→            >
+   672→              <Landmark className="size-3" />
+   673→              Loan Categories
+   674→            </div>
+   675→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   676→              Explore Loan Types
+   677→            </h2>
+   678→            <p className="mt-2 max-w-md mx-auto text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   679→              We support eligibility analysis for a wide range of loan categories.
+   680→            </p>
+   681→          </motion.div>
+   682→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   683→            {loanTypesList.map((item, i) => (
+   684→              <motion.div
+   685→                key={item.title}
+   686→                initial={{ opacity: 0, y: 20 }}
+   687→                whileInView={{ opacity: 1, y: 0 }}
+   688→                viewport={{ once: true }}
+   689→                transition={{ delay: i * 0.05 }}
+   690→                className="glass rounded-xl p-5 group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+   691→                style={{
+   692→                  borderColor: undefined,
+   693→                }}
+   694→                onMouseEnter={(e) => {
+   695→                  e.currentTarget.style.boxShadow = "0 0 20px oklch(0.75 0.18 200 / 0.15), 0 0 40px oklch(0.75 0.18 200 / 0.05)";
+   696→                  e.currentTarget.style.borderColor = "oklch(0.75 0.18 200 / 0.3)";
+   697→                }}
+   698→                onMouseLeave={(e) => {
+   699→                  e.currentTarget.style.boxShadow = "none";
+   700→                  e.currentTarget.style.borderColor = "oklch(0.45 0.15 200 / 0.12)";
+   701→                }}
+   702→              >
+   703→                <div
+   704→                  className="p-2.5 rounded-xl w-fit mb-3 group-hover:scale-110 transition-transform"
+   705→                  style={{ background: "oklch(0.75 0.18 200 / 0.1)", border: "1px solid oklch(0.75 0.18 200 / 0.12)" }}
+   706→                >
+   707→                  <item.icon className="size-5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   708→                </div>
+   709→                <h3 className="font-semibold text-sm mb-1">{item.title}</h3>
+   710→                <p className="text-xs leading-relaxed" style={{ color: "oklch(0.55 0.02 220)" }}>{item.desc}</p>
+   711→              </motion.div>
+   712→            ))}
+   713→          </div>
+   714→        </div>
+   715→      </section>
+   716→
+   717→      {/* ═══════════════════ FINANCE TOOLS SECTION ═══════════════════ */}
+   718→      <section id="tools-section" className="py-16 sm:py-20" style={{ background: "oklch(0.15 0.035 265 / 0.5)" }}>
+   719→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   720→          <motion.div
+   721→            initial={{ opacity: 0, y: 20 }}
+   722→            whileInView={{ opacity: 1, y: 0 }}
+   723→            viewport={{ once: true }}
+   724→            className="text-center mb-12"
+   725→          >
+   726→            <div
+   727→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+   728→              style={{
+   729→                background: "oklch(0.75 0.18 200 / 0.1)",
+   730→                color: "oklch(0.75 0.18 200)",
+   731→                border: "1px solid oklch(0.75 0.18 200 / 0.15)",
+   732→              }}
+   733→            >
+   734→              <Calculator className="size-3" />
+   735→              Financial Tools
+   736→            </div>
+   737→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   738→              Finance Tools
+   739→            </h2>
+   740→            <p className="mt-2 max-w-md mx-auto text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   741→              Powerful calculators and comparison tools to make informed financial decisions.
+   742→            </p>
+   743→          </motion.div>
+   744→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+   745→            <motion.div
+   746→              initial={{ opacity: 0, x: -20 }}
+   747→              whileInView={{ opacity: 1, x: 0 }}
+   748→              viewport={{ once: true }}
+   749→            >
+   750→              <EMICalculator />
+   751→            </motion.div>
+   752→            <motion.div
+   753→              initial={{ opacity: 0, x: 20 }}
+   754→              whileInView={{ opacity: 1, x: 0 }}
+   755→              viewport={{ once: true }}
+   756→            >
+   757→              <Card className="glass gradient-border h-full">
+   758→                <CardContent className="pt-6 space-y-5">
+   759→                  <div className="flex items-center gap-2.5 mb-2">
+   760→                    <div className="p-2 rounded-xl" style={{ background: "oklch(0.82 0.16 85 / 0.1)", border: "1px solid oklch(0.82 0.16 85 / 0.15)" }}>
+   761→                      <BarChart3 className="size-5" style={{ color: "oklch(0.82 0.16 85)" }} />
+   762→                    </div>
+   763→                    <div>
+   764→                      <h3 className="font-semibold text-sm">Loan Comparison</h3>
+   765→                      <p className="text-[11px]" style={{ color: "oklch(0.60 0.02 220)" }}>Compare two loan options side by side</p>
+   766→                    </div>
+   767→                  </div>
+   768→                  <div className="overflow-x-auto">
+   769→                    <table className="w-full text-xs">
+   770→                      <thead>
+   771→                        <tr style={{ borderBottom: "1px solid oklch(0.30 0.04 265 / 0.5)" }}>
+   772→                          <th className="text-left py-2.5 px-3 font-semibold" style={{ color: "oklch(0.65 0.02 220)" }}>Feature</th>
+   773→                          <th className="text-center py-2.5 px-3 font-semibold" style={{ color: "oklch(0.75 0.18 200)" }}>Home Loan</th>
+   774→                          <th className="text-center py-2.5 px-3 font-semibold" style={{ color: "oklch(0.82 0.16 85)" }}>Personal Loan</th>
+   775→                        </tr>
+   776→                      </thead>
+   777→                      <tbody>
+   778→                        {[
+   779→                          ["Interest Rate", "8.5% - 10.5%", "10.5% - 18%"],
+   780→                          ["Max Tenure", "30 Years", "5 Years"],
+   781→                          ["Max Amount", "₹5 Crore", "₹40 Lakh"],
+   782→                          ["Processing Fee", "0.5% - 1%", "1% - 3%"],
+   783→                          ["Collateral", "Required", "Not Required"],
+   784→                          ["Disbursal", "7-15 Days", "1-3 Days"],
+   785→                        ].map(([feature, home, personal], idx) => (
+   786→                          <tr key={feature} style={{ borderBottom: idx < 5 ? "1px solid oklch(0.30 0.04 265 / 0.3)" : "none" }}>
+   787→                            <td className="py-2.5 px-3 font-medium" style={{ color: "oklch(0.75 0.01 200)" }}>{feature}</td>
+   788→                            <td className="py-2.5 px-3 text-center" style={{ color: "oklch(0.60 0.02 220)" }}>{home}</td>
+   789→                            <td className="py-2.5 px-3 text-center" style={{ color: "oklch(0.60 0.02 220)" }}>{personal}</td>
+   790→                          </tr>
+   791→                        ))}
+   792→                      </tbody>
+   793→                    </table>
+   794→                  </div>
+   795→                  <div className="flex items-center gap-2 pt-2">
+   796→                    <div className="flex items-center gap-1.5">
+   797→                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "oklch(0.75 0.18 200)" }} />
+   798→                      <span className="text-[10px]" style={{ color: "oklch(0.55 0.02 220)" }}>Home Loan</span>
+   799→                    </div>
+   800→                    <div className="flex items-center gap-1.5">
+   801→                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "oklch(0.82 0.16 85)" }} />
+   802→                      <span className="text-[10px]" style={{ color: "oklch(0.55 0.02 220)" }}>Personal Loan</span>
+   803→                    </div>
+   804→                  </div>
+   805→                </CardContent>
+   806→              </Card>
+   807→            </motion.div>
+   808→          </div>
+   809→        </div>
+   810→      </section>
+   811→
+   812→      {/* ═══════════════════ HOW IT WORKS SECTION ═══════════════════ */}
+   813→      <section id="features-section" className="py-16 sm:py-20">
+   814→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   815→          <motion.div
+   816→            initial={{ opacity: 0, y: 20 }}
+   817→            whileInView={{ opacity: 1, y: 0 }}
+   818→            viewport={{ once: true }}
+   819→            className="text-center mb-12"
+   820→          >
+   821→            <div
+   822→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+   823→              style={{
+   824→                background: "oklch(0.75 0.18 200 / 0.1)",
+   825→                color: "oklch(0.75 0.18 200)",
+   826→                border: "1px solid oklch(0.75 0.18 200 / 0.15)",
+   827→              }}
+   828→            >
+   829→              <Zap className="size-3" />
+   830→              Simple Process
+   831→            </div>
+   832→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   833→              How It Works
+   834→            </h2>
+   835→            <p className="mt-2 max-w-md mx-auto text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   836→              Three simple steps to get your personalized loan eligibility report.
+   837→            </p>
+   838→          </motion.div>
+   839→
+   840→          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+   841→            {[
+   842→              {
+   843→                icon: BarChart3,
+   844→                title: "Enter Your Details",
+   845→                description:
+   846→                  "Provide your income, credit score, employment info, and desired loan amount through our secure form.",
+   847→                step: "01",
+   848→              },
+   849→              {
+   850→                icon: Brain,
+   851→                title: "AI Analysis",
+   852→                description:
+   853→                  "Our AI engine evaluates multiple financial factors including debt ratios, income stability, and creditworthiness.",
+   854→                step: "02",
+   855→              },
+   856→              {
+   857→                icon: Zap,
+   858→                title: "Get Your Report",
+   859→                description:
+   860→                  "Receive a detailed eligibility score, risk assessment, maximum loan amount, interest rate, and personalized tips.",
+   861→                step: "03",
+   862→              },
+   863→            ].map((feature, i) => (
+   864→              <motion.div
+   865→                key={feature.step}
+   866→                initial={{ opacity: 0, y: 20 }}
+   867→                whileInView={{ opacity: 1, y: 0 }}
+   868→                viewport={{ once: true }}
+   869→                transition={{ delay: i * 0.15 }}
+   870→              >
+   871→                <Card className="glass gradient-border h-full hover:scale-[1.02] transition-transform duration-300">
+   872→                  <CardContent className="pt-6">
+   873→                    <div className="flex items-center justify-between mb-4">
+   874→                      <div
+   875→                        className="p-2.5 rounded-xl"
+   876→                        style={{ background: "oklch(0.75 0.18 200 / 0.1)", border: "1px solid oklch(0.75 0.18 200 / 0.12)" }}
+   877→                      >
+   878→                        <feature.icon className="size-5" style={{ color: "oklch(0.75 0.18 200)" }} />
+   879→                      </div>
+   880→                      <span className="text-3xl font-bold" style={{ color: "oklch(0.75 0.18 200 / 0.08)" }}>
+   881→                        {feature.step}
+   882→                      </span>
+   883→                    </div>
+   884→                    <h3 className="font-semibold text-base mb-2">
+   885→                      {feature.title}
+   886→                    </h3>
+   887→                    <p className="text-sm leading-relaxed" style={{ color: "oklch(0.60 0.02 220)" }}>
+   888→                      {feature.description}
+   889→                    </p>
+   890→                  </CardContent>
+   891→                </Card>
+   892→              </motion.div>
+   893→            ))}
+   894→          </div>
+   895→        </div>
+   896→      </section>
+   897→
+   898→      {/* ═══════════════════ TESTIMONIALS ═══════════════════ */}
+   899→      <section className="py-16 sm:py-20" style={{ background: "oklch(0.15 0.035 265 / 0.5)" }}>
+   900→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   901→          <motion.div
+   902→            initial={{ opacity: 0, y: 20 }}
+   903→            whileInView={{ opacity: 1, y: 0 }}
+   904→            viewport={{ once: true }}
+   905→            className="text-center mb-12"
+   906→          >
+   907→            <div
+   908→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+   909→              style={{
+   910→                background: "oklch(0.82 0.16 85 / 0.1)",
+   911→                color: "oklch(0.82 0.16 85)",
+   912→                border: "1px solid oklch(0.82 0.16 85 / 0.15)",
+   913→              }}
+   914→            >
+   915→              <MessageSquareText className="size-3" />
+   916→              User Feedback
+   917→            </div>
+   918→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   919→              What Our Users Say
+   920→            </h2>
+   921→            <p className="mt-2 max-w-md mx-auto text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+   922→              Trusted by thousands of users across India for loan eligibility insights.
+   923→            </p>
+   924→          </motion.div>
+   925→          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+   926→            {testimonials.map((t, i) => (
+   927→              <motion.div
+   928→                key={t.name}
+   929→                initial={{ opacity: 0, y: 20 }}
+   930→                whileInView={{ opacity: 1, y: 0 }}
+   931→                viewport={{ once: true }}
+   932→                transition={{ delay: i * 0.15 }}
+   933→                className="glass gradient-border rounded-2xl p-6"
+   934→              >
+   935→                <div className="flex items-center gap-1 mb-4">
+   936→                  {Array.from({ length: 5 }).map((_, si) => (
+   937→                    <Star key={si} className="size-4 fill-current" style={{ color: "oklch(0.82 0.16 85)" }} />
+   938→                  ))}
+   939→                </div>
+   940→                <Quote className="size-6 mb-3 opacity-30" style={{ color: "oklch(0.75 0.18 200)" }} />
+   941→                <p className="text-sm leading-relaxed mb-5" style={{ color: "oklch(0.70 0.01 200)" }}>
+   942→                  {t.quote}
+   943→                </p>
+   944→                <div className="flex items-center gap-3">
+   945→                  <div
+   946→                    className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
+   947→                    style={{ background: t.color, color: t.textColor }}
+   948→                  >
+   949→                    {t.initials}
+   950→                  </div>
+   951→                  <div>
+   952→                    <p className="text-sm font-semibold">{t.name}</p>
+   953→                    <p className="text-xs" style={{ color: "oklch(0.55 0.02 220)" }}>{t.role}</p>
+   954→                  </div>
+   955→                </div>
+   956→              </motion.div>
+   957→            ))}
+   958→          </div>
+   959→        </div>
+   960→      </section>
+   961→
+   962→      {/* ═══════════════════ FAQ SECTION ═══════════════════ */}
+   963→      <section className="py-16 sm:py-20">
+   964→        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+   965→          <motion.div
+   966→            initial={{ opacity: 0, y: 20 }}
+   967→            whileInView={{ opacity: 1, y: 0 }}
+   968→            viewport={{ once: true }}
+   969→            className="text-center mb-12"
+   970→          >
+   971→            <div
+   972→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+   973→              style={{
+   974→                background: "oklch(0.75 0.18 200 / 0.1)",
+   975→                color: "oklch(0.75 0.18 200)",
+   976→                border: "1px solid oklch(0.75 0.18 200 / 0.15)",
+   977→              }}
+   978→            >
+   979→              <MessageSquareText className="size-3" />
+   980→              FAQs
+   981→            </div>
+   982→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   983→              Frequently Asked Questions
+   984→            </h2>
+   985→          </motion.div>
+   986→          <motion.div
+   987→            initial={{ opacity: 0, y: 20 }}
+   988→            whileInView={{ opacity: 1, y: 0 }}
+   989→            viewport={{ once: true }}
+   990→          >
+   991→            <Card className="glass">
+   992→              <CardContent className="p-0">
+   993→                <Accordion type="single" collapsible className="px-6">
+   994→                  {faqs.map((faq, i) => (
+   995→                    <AccordionItem key={i} value={`faq-${i}`}>
+   996→                      <AccordionTrigger className="text-sm font-semibold text-left hover:no-underline">
+   997→                        {faq.q}
+   998→                      </AccordionTrigger>
+   999→                      <AccordionContent className="text-sm leading-relaxed" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1000→                        {faq.a}
+  1001→                      </AccordionContent>
+  1002→                    </AccordionItem>
+  1003→                  ))}
+  1004→                </Accordion>
+  1005→              </CardContent>
+  1006→            </Card>
+  1007→          </motion.div>
+  1008→        </div>
+  1009→      </section>
+  1010→
+  1011→      {/* ═══════════════════ RULES & REGULATIONS SECTION ═══════════════════ */}
+  1012→      <section id="rules-section" className="py-16 sm:py-20" style={{ background: "oklch(0.15 0.035 265 / 0.5)" }}>
+  1013→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1014→          <motion.div
+  1015→            initial={{ opacity: 0, y: 20 }}
+  1016→            whileInView={{ opacity: 1, y: 0 }}
+  1017→            viewport={{ once: true }}
+  1018→            className="text-center mb-12"
+  1019→          >
+  1020→            <div
+  1021→              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+  1022→              style={{
+  1023→                background: "oklch(0.75 0.18 200 / 0.1)",
+  1024→                color: "oklch(0.75 0.18 200)",
+  1025→                border: "1px solid oklch(0.75 0.18 200 / 0.15)",
+  1026→              }}
+  1027→            >
+  1028→              <Scale className="size-3" />
+  1029→              Legal & Compliance
+  1030→            </div>
+  1031→            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+  1032→              Rules & Regulations
+  1033→            </h2>
+  1034→            <p className="mt-2 max-w-lg mx-auto text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1035→              Please review our policies carefully before using LoanIQ. By using this platform, you agree to the following terms and conditions.
+  1036→            </p>
+  1037→          </motion.div>
+  1038→
+  1039→          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+  1040→            {/* Accordion */}
+  1041→            <div className="lg:col-span-3">
+  1042→              <Card className="glass">
+  1043→                <CardContent className="p-0">
+  1044→                  <Accordion type="multiple" className="px-6">
+  1045→                    <AccordionItem value="terms">
+  1046→                      <AccordionTrigger className="text-base font-semibold gap-3">
+  1047→                        <div className="flex items-center gap-2.5">
+  1048→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+  1049→                            <FileText className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+  1050→                          </div>
+  1051→                          Terms of Service
+  1052→                        </div>
+  1053→                      </AccordionTrigger>
+  1054→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1055→                        <p>By accessing and using LoanIQ (&quot;the Platform&quot;), you accept and agree to be bound by these Terms of Service. If you do not agree, you must not use the Platform.</p>
+  1056→                        <p><strong className="text-foreground">1. Eligibility:</strong> You must be at least 18 years of age and have the legal capacity to enter into binding agreements. You are responsible for ensuring that your use of the Platform complies with all applicable local, state, national, and international laws.</p>
+  1057→                        <p><strong className="text-foreground">2. Purpose of Use:</strong> LoanIQ provides AI-generated loan eligibility assessments for informational and educational purposes only. The Platform does not guarantee loan approval, offer loans, or act as a licensed financial advisor, lender, or broker.</p>
+  1058→                        <p><strong className="text-foreground">3. Accuracy of Information:</strong> You are solely responsible for the accuracy and completeness of the information you provide. Inaccurate, incomplete, or misleading data will result in unreliable assessments.</p>
+  1059→                        <p><strong className="text-foreground">4. Modification of Terms:</strong> We reserve the right to modify these terms at any time. Continued use of the Platform after changes constitutes acceptance of the revised terms.</p>
+  1060→                      </AccordionContent>
+  1061→                    </AccordionItem>
+  1062→
+  1063→                    <AccordionItem value="privacy">
+  1064→                      <AccordionTrigger className="text-base font-semibold gap-3">
+  1065→                        <div className="flex items-center gap-2.5">
+  1066→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+  1067→                            <Lock className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+  1068→                          </div>
+  1069→                          Privacy & Data Protection
+  1070→                        </div>
+  1071→                      </AccordionTrigger>
+  1072→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1073→                        <p>LoanIQ is committed to protecting your personal and financial information. Our data practices comply with applicable data protection regulations.</p>
+  1074→                        <p><strong className="text-foreground">1. Data Collection:</strong> We collect only the information you voluntarily provide through the eligibility form, including name, income details, credit score, employment information, and loan preferences. No data is collected without your explicit input.</p>
+  1075→                        <p><strong className="text-foreground">2. Data Storage:</strong> All data is stored locally on our secure servers with industry-standard encryption. Your information is never sold, rented, or shared with third parties for marketing purposes.</p>
+  1076→                        <p><strong className="text-foreground">3. Data Retention:</strong> Your eligibility check history is retained on our servers for a maximum of 90 days, after which it is automatically and permanently deleted. You may request immediate deletion at any time.</p>
+  1077→                        <p><strong className="text-foreground">4. Cookies & Tracking:</strong> We use minimal, essential cookies for platform functionality only. We do not use tracking cookies, analytics trackers, or third-party advertising pixels.</p>
+  1078→                        <p><strong className="text-foreground">5. Your Rights:</strong> You have the right to access, correct, delete, or export your personal data at any time by contacting us or using the in-platform delete functionality.</p>
+  1079→                      </AccordionContent>
+  1080→                    </AccordionItem>
+  1081→
+  1082→                    <AccordionItem value="disclaimer">
+  1083→                      <AccordionTrigger className="text-base font-semibold gap-3">
+  1084→                        <div className="flex items-center gap-2.5">
+  1085→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+  1086→                            <AlertTriangle className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+  1087→                          </div>
+  1088→                          Disclaimer & Limitations
+  1089→                        </div>
+  1090→                      </AccordionTrigger>
+  1091→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1092→                        <p>The information provided by LoanIQ is generated by artificial intelligence and is intended solely for general informational purposes.</p>
+  1093→                        <p><strong className="text-foreground">1. Not Financial Advice:</strong> LoanIQ does not provide financial advice, credit counseling, or loan brokerage services. The eligibility assessment should not be used as the sole basis for any financial decision.</p>
+  1094→                        <p><strong className="text-foreground">2. No Guarantee of Approval:</strong> An eligibility score from LoanIQ does not guarantee that any financial institution will approve your loan application. Actual approval depends on the lender&apos;s specific criteria, verification processes, and current policies.</p>
+  1095→                        <p><strong className="text-foreground">3. Accuracy Limitations:</strong> While we strive for accuracy, AI-generated assessments may contain errors or may not reflect the most current lending standards. Interest rates and maximum loan amounts are estimates only.</p>
+  1096→                        <p><strong className="text-foreground">4. Liability:</strong> LoanIQ, its developers, and affiliates shall not be held liable for any financial losses, missed opportunities, or decisions made based on the information provided by this Platform.</p>
+  1097→                      </AccordionContent>
+  1098→                    </AccordionItem>
+  1099→
+  1100→                    <AccordionItem value="ai-methodology">
+  1101→                      <AccordionTrigger className="text-base font-semibold gap-3">
+  1102→                        <div className="flex items-center gap-2.5">
+  1103→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+  1104→                            <Brain className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+  1105→                          </div>
+  1106→                          AI Analysis Methodology
+  1107→                        </div>
+  1108→                      </AccordionTrigger>
+  1109→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1110→                        <p>Understanding how our AI evaluates your loan eligibility helps you interpret results accurately.</p>
+  1111→                        <p><strong className="text-foreground">1. Factors Evaluated:</strong> Our AI analyzes five key factors: Credit Score quality, Income Stability, Debt-to-Income Ratio (DTI), Loan-to-Income Ratio, and Employment Stability. Each factor is scored 0-100.</p>
+  1112→                        <p><strong className="text-foreground">2. Scoring Model:</strong> The overall eligibility score (0-100) is a weighted composite of all individual factor scores. The weighting considers industry-standard lending practices but may differ from any specific lender&apos;s model.</p>
+  1113→                        <p><strong className="text-foreground">3. Risk Classification:</strong> Scores are categorized as Low Risk (80-100), Medium Risk (60-79), High Risk (40-59), and Very High Risk (0-39). These categories are for guidance only.</p>
+  1114→                        <p><strong className="text-foreground">4. Rate Estimation:</strong> Recommended interest rates are approximate estimates based on the AI&apos;s assessment. Actual rates depend on the lender, prevailing market conditions, and your complete application.</p>
+  1115→                        <p><strong className="text-foreground">5. Continuous Improvement:</strong> Our AI model is regularly updated to reflect changing financial regulations and lending standards. However, there may be a lag between industry changes and model updates.</p>
+  1116→                      </AccordionContent>
+  1117→                    </AccordionItem>
+  1118→
+  1119→                    <AccordionItem value="user-responsibilities">
+  1120→                      <AccordionTrigger className="text-base font-semibold gap-3">
+  1121→                        <div className="flex items-center gap-2.5">
+  1122→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+  1123→                            <Users className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+  1124→                          </div>
+  1125→                          User Responsibilities
+  1126→                        </div>
+  1127→                      </AccordionTrigger>
+  1128→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1129→                        <p>As a user of LoanIQ, you acknowledge and accept the following responsibilities.</p>
+  1130→                        <p><strong className="text-foreground">1. Honest Disclosure:</strong> You must provide accurate, current, and complete information. Deliberately providing false information undermines the reliability of the assessment.</p>
+  1131→                        <p><strong className="text-foreground">2. Professional Consultation:</strong> You are strongly encouraged to consult with a licensed financial advisor, loan officer, or credit counselor before making any loan-related decisions based on our assessments.</p>
+  1132→                        <p><strong className="text-foreground">3. Account Security:</strong> You are responsible for maintaining the confidentiality of your session and device. Do not share your eligibility results with unauthorized parties.</p>
+  1133→                        <p><strong className="text-foreground">4. Fair Use:</strong> The Platform is designed for personal, non-commercial use. Automated or systematic use of the Platform, including API scraping or bulk submissions, is strictly prohibited.</p>
+  1134→                      </AccordionContent>
+  1135→                    </AccordionItem>
+  1136→
+  1137→                    <AccordionItem value="third-party">
+  1138→                      <AccordionTrigger className="text-base font-semibold gap-3">
+  1139→                        <div className="flex items-center gap-2.5">
+  1140→                          <div className="p-1.5 rounded-md" style={{ background: "oklch(0.75 0.18 200 / 0.1)" }}>
+  1141→                            <Globe className="size-3.5" style={{ color: "oklch(0.75 0.18 200)" }} />
+  1142→                          </div>
+  1143→                          Third-Party Disclosures
+  1144→                        </div>
+  1145→                      </AccordionTrigger>
+  1146→                      <AccordionContent className="leading-relaxed space-y-3" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1147→                        <p>We are transparent about any circumstances under which your data may be shared.</p>
+  1148→                        <p><strong className="text-foreground">1. No Selling of Data:</strong> LoanIQ does not sell, trade, or monetize your personal or financial data under any circumstances.</p>
+  1149→                        <p><strong className="text-foreground">2. Legal Requirements:</strong> We may disclose information if required by law, regulation, legal process, or governmental request. We will notify you to the extent legally permissible.</p>
+  1150→                        <p><strong className="text-foreground">3. Platform Providers:</strong> Data may be shared with our infrastructure and AI service providers solely for the purpose of delivering the Platform&apos;s functionality. These providers are contractually bound to maintain data confidentiality.</p>
+  1151→                        <p><strong className="text-foreground">4. Aggregate Statistics:</strong> Anonymized, aggregated data may be used for platform improvement, research, and statistical analysis. No individual user can be identified from such data.</p>
+  1152→                      </AccordionContent>
+  1153→                    </AccordionItem>
+  1154→                  </Accordion>
+  1155→                </CardContent>
+  1156→              </Card>
+  1157→            </div>
+  1158→
+  1159→            {/* Side Info Cards */}
+  1160→            <div className="lg:col-span-2 space-y-6">
+  1161→              <motion.div
+  1162→                initial={{ opacity: 0, y: 15 }}
+  1163→                whileInView={{ opacity: 1, y: 0 }}
+  1164→                viewport={{ once: true }}
+  1165→              >
+  1166→                <Card className="glass hover:scale-[1.01] transition-transform duration-300">
+  1167→                  <CardContent className="pt-6">
+  1168→                    <div className="flex items-center gap-3 mb-4">
+  1169→                      <div className="p-2 rounded-xl" style={{ background: "oklch(0.75 0.18 200 / 0.1)", border: "1px solid oklch(0.75 0.18 200 / 0.12)" }}>
+  1170→                        <Shield className="size-5" style={{ color: "oklch(0.75 0.18 200)" }} />
+  1171→                      </div>
+  1172→                      <h3 className="font-semibold">Compliance Standards</h3>
+  1173→                    </div>
+  1174→                    <ul className="space-y-2.5 text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1175→                      <li className="flex items-start gap-2">
+  1176→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1177→                        Compliant with general data protection principles
+  1178→                      </li>
+  1179→                      <li className="flex items-start gap-2">
+  1180→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1181→                        AES-256 encryption for data at rest
+  1182→                      </li>
+  1183→                      <li className="flex items-start gap-2">
+  1184→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1185→                        TLS 1.3 for data in transit
+  1186→                      </li>
+  1187→                      <li className="flex items-start gap-2">
+  1188→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1189→                        Automated data purging after 90 days
+  1190→                      </li>
+  1191→                      <li className="flex items-start gap-2">
+  1192→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1193→                        No third-party data sharing for marketing
+  1194→                      </li>
+  1195→                    </ul>
+  1196→                  </CardContent>
+  1197→                </Card>
+  1198→              </motion.div>
+  1199→
+  1200→              <motion.div
+  1201→                initial={{ opacity: 0, y: 15 }}
+  1202→                whileInView={{ opacity: 1, y: 0 }}
+  1203→                viewport={{ once: true }}
+  1204→                transition={{ delay: 0.1 }}
+  1205→              >
+  1206→                <Card className="glass hover:scale-[1.01] transition-transform duration-300">
+  1207→                  <CardContent className="pt-6">
+  1208→                    <div className="flex items-center gap-3 mb-4">
+  1209→                      <div className="p-2 rounded-xl" style={{ background: "oklch(0.75 0.18 200 / 0.1)", border: "1px solid oklch(0.75 0.18 200 / 0.12)" }}>
+  1210→                        <Eye className="size-5" style={{ color: "oklch(0.75 0.18 200)" }} />
+  1211→                      </div>
+  1212→                      <h3 className="font-semibold">Your Rights</h3>
+  1213→                    </div>
+  1214→                    <ul className="space-y-2.5 text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1215→                      <li className="flex items-start gap-2">
+  1216→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1217→                        Right to access your stored data
+  1218→                      </li>
+  1219→                      <li className="flex items-start gap-2">
+  1220→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1221→                        Right to request immediate data deletion
+  1222→                      </li>
+  1223→                      <li className="flex items-start gap-2">
+  1224→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1225→                        Right to correct inaccurate information
+  1226→                      </li>
+  1227→                      <li className="flex items-start gap-2">
+  1228→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1229→                        Right to export your check history
+  1230→                      </li>
+  1231→                      <li className="flex items-start gap-2">
+  1232→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1233→                        Right to opt out at any time
+  1234→                      </li>
+  1235→                    </ul>
+  1236→                  </CardContent>
+  1237→                </Card>
+  1238→              </motion.div>
+  1239→
+  1240→              <motion.div
+  1241→                initial={{ opacity: 0, y: 15 }}
+  1242→                whileInView={{ opacity: 1, y: 0 }}
+  1243→                viewport={{ once: true }}
+  1244→                transition={{ delay: 0.2 }}
+  1245→              >
+  1246→                <Card className="glass hover:scale-[1.01] transition-transform duration-300">
+  1247→                  <CardContent className="pt-6">
+  1248→                    <div className="flex items-center gap-3 mb-4">
+  1249→                      <div className="p-2 rounded-xl" style={{ background: "oklch(0.75 0.18 200 / 0.1)", border: "1px solid oklch(0.75 0.18 200 / 0.12)" }}>
+  1250→                        <Database className="size-5" style={{ color: "oklch(0.75 0.18 200)" }} />
+  1251→                      </div>
+  1252→                      <h3 className="font-semibold">Data Handling</h3>
+  1253→                    </div>
+  1254→                    <ul className="space-y-2.5 text-sm" style={{ color: "oklch(0.60 0.02 220)" }}>
+  1255→                      <li className="flex items-start gap-2">
+  1256→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1257→                        Data stored locally on encrypted servers
+  1258→                      </li>
+  1259→                      <li className="flex items-start gap-2">
+  1260→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1261→                        No cloud-based third-party storage
+  1262→                      </li>
+  1263→                      <li className="flex items-start gap-2">
+  1264→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1265→                        Session-based processing, no persistent cookies
+  1266→                      </li>
+  1267→                      <li className="flex items-start gap-2">
+  1268→                        <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "oklch(0.75 0.18 200)" }} />
+  1269→                        Minimal data collection principle applied
+  1270→                      </li>
+  1271→                    </ul>
+  1272→                  </CardContent>
+  1273→                </Card>
+  1274→              </motion.div>
+  1275→            </div>
+  1276→          </div>
+  1277→        </div>
+  1278→      </section>
+  1279→
+  1280→      {/* ═══════════════════ FOOTER ═══════════════════ */}
+  1281→      <footer className="glass-strong mt-auto">
+  1282→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  1283→          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+  1284→            <div className="flex items-center gap-2">
+  1285→              <div className="p-1 rounded-md" style={{ background: "oklch(0.75 0.18 200)" }}>
+  1286→                <Shield className="size-3.5" style={{ color: "oklch(0.13 0.04 265)" }} />
+  1287→              </div>
+  1288→              <span className="text-sm font-semibold">
+  1289→                Loan<span style={{ color: "oklch(0.75 0.18 200)" }}>IQ</span>
+  1290→              </span>
+  1291→            </div>
+  1292→            <p className="text-xs text-center max-w-sm" style={{ color: "oklch(0.50 0.02 220)" }}>
+  1293→              AI-powered loan eligibility analysis. Results are for informational purposes only and do not constitute financial advice or guarantee loan approval.
+  1294→            </p>
+  1295→            <p className="text-xs" style={{ color: "oklch(0.50 0.02 220)" }}>
+  1296→              &copy; {new Date().getFullYear()} LoanIQ. All rights reserved.
+  1297→            </p>
+  1298→          </div>
+  1299→        </div>
+  1300→      </footer>
+  1301→
+  1302→      {/* ═══════════════════ CHATBOT ═══════════════════ */}
+  1303→      <Chatbot />
+  1304→    </div>
+  1305→  );
+  1306→}
+  1307→
