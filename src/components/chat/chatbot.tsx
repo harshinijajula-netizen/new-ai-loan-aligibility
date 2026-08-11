@@ -4,12 +4,13 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, X, Send, Bot, User, Loader2 } from "lucide-react";
+import { useLocale } from "@/contexts/locale-context";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 export function Chatbot() {
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -25,7 +26,7 @@ export function Chatbot() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, loading]);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -44,11 +45,14 @@ export function Chatbot() {
         body: JSON.stringify({ message: text, history: messages }),
       });
       const data = await res.json();
-      if (data.reply) {
+      if (res.ok && data.reply) {
         setMessages([...newMessages, { role: "assistant", content: data.reply }]);
+      } else {
+        const errMsg = data.error || t("chat.error");
+        setMessages([...newMessages, { role: "assistant", content: `⚠️ ${errMsg}` }]);
       }
     } catch {
-      setMessages([...newMessages, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
+      setMessages([...newMessages, { role: "assistant", content: `⚠️ ${t("chat.error")}` }]);
     } finally {
       setLoading(false);
     }
@@ -95,7 +99,7 @@ export function Chatbot() {
                 <Bot className="size-4" style={{ color: "oklch(0.75 0.18 200)" }} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold">AI Loan Assistant</h3>
+                <h3 className="text-sm font-semibold">{t("chat.title")}</h3>
                 <p className="text-[10px]" style={{ color: "oklch(0.60 0.02 200)" }}>Online</p>
               </div>
             </div>
@@ -108,7 +112,7 @@ export function Chatbot() {
                     <Bot className="size-8" style={{ color: "oklch(0.75 0.18 200)" }} />
                   </div>
                   <p className="text-xs" style={{ color: "oklch(0.60 0.02 220)" }}>
-                    Hello! I&apos;m your AI Loan Assistant.<br />Ask me about loans, eligibility, EMI, documents, or anything banking-related.
+                    {t("chat.welcome")}
                   </p>
                 </div>
               )}
@@ -126,9 +130,7 @@ export function Chatbot() {
                   )}
                   <div
                     className={`max-w-[80%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
-                      msg.role === "user"
-                        ? "rounded-br-md"
-                        : "rounded-bl-md"
+                      msg.role === "user" ? "rounded-br-md" : "rounded-bl-md"
                     }`}
                     style={
                       msg.role === "user"
@@ -163,8 +165,8 @@ export function Chatbot() {
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder="Ask me about loans..."
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}}
+                placeholder={t("chat.placeholder")}
                 className="flex-1 h-9 text-xs rounded-xl"
                 style={{ background: "oklch(0.22 0.035 265)", border: "1px solid oklch(0.30 0.04 265 / 0.4)" }}
               />

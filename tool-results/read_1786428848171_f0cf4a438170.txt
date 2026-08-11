@@ -1,0 +1,704 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback, useRef } from "react";
+     4→     4→import { motion, AnimatePresence } from "framer-motion";
+     5→     5→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+     6→     6→import { EligibilityForm } from "@/components/loan/eligibility-form";
+     7→     7→import { ResultsDashboard, EligibilityResult } from "@/components/loan/results-dashboard";
+     8→     8→import { HistoryPanel, HistoryItem } from "@/components/loan/history-panel";
+     9→     9→import { Chatbot } from "@/components/chat/chatbot";
+    10→    10→import { EMICalculator } from "@/components/tools/emi-calculator";
+    11→    11→import {
+    12→    12→  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+    13→    13→} from "@/components/ui/accordion";
+    14→    14→import {
+    15→    15→  Shield, Zap, BarChart3, Brain, Lock, RefreshCcw, ArrowDown, Menu, X,
+    16→    16→  Scale, FileText, Eye, AlertTriangle, Database, Users, Globe, House,
+    17→    17→  GraduationCap, Car, Building2, Landmark, Wheat, Heart, Star, Calculator,
+    18→    18→  TrendingUp, Target, ShieldCheck, Sparkles, MessageSquareText, Lightbulb,
+    19→    19→  BadgeDollarSign, Quote,
+    20→    20→} from "lucide-react";
+    21→    21→import { Button } from "@/components/ui/button";
+    22→    22→import { Card, CardContent } from "@/components/ui/card";
+    23→    23→import { toast } from "sonner";
+    24→    24→
+    25→    25→type FormData = {
+    26→    26→  applicantName: string; monthlyIncome: string; creditScore: string;
+    27→    27→  loanAmount: string; loanTenure: string; employmentType: string;
+    28→    28→  existingDebt: string; loanPurpose: string;
+    29→    29→};
+    30→    30→
+    31→    31→function useCountUp(target: number, duration = 2000) {
+    32→    32→  const [count, setCount] = useState(0);
+    33→    33→  const ref = useRef<HTMLDivElement>(null);
+    34→    34→  const started = useRef(false);
+    35→    35→  useEffect(() => {
+    36→    36→    const el = ref.current;
+    37→    37→    if (!el) return;
+    38→    38→    const observer = new IntersectionObserver(
+    39→    39→      ([entry]) => {
+    40→    40→        if (entry.isIntersecting && !started.current) {
+    41→    41→          started.current = true;
+    42→    42→          const t0 = Date.now();
+    43→    43→          const tick = () => {
+    44→    44→            const p = Math.min((Date.now() - t0) / duration, 1);
+    45→    45→            setCount(Math.round(target * (1 - Math.pow(1 - p, 3))));
+    46→    46→            if (p < 1) requestAnimationFrame(tick);
+    47→    47→          };
+    48→    48→          requestAnimationFrame(tick);
+    49→    49→        }
+    50→    50→      },
+    51→    51→      { threshold: 0.3 },
+    52→    52→    );
+    53→    53→    observer.observe(el);
+    54→    54→    return () => observer.disconnect();
+    55→    55→  }, [target, duration]);
+    56→    56→  return { count, ref };
+    57→    57→}
+    58→    58→
+    59→    59→const CYAN = "oklch(0.75 0.18 200)";
+    60→    60→const GOLD = "oklch(0.82 0.16 85)";
+    61→    61→const MUTED = "oklch(0.60 0.02 220)";
+    62→    62→const DIM = "oklch(0.55 0.02 220)";
+    63→    63→const BORDER_SUBTLE = "oklch(0.30 0.04 265 / 0.5)";
+    64→    64→
+    65→    65→const badgeStyle = (bg: string, color: string, border: string) => ({
+    66→    66→  background: `${bg} / 0.1`, color, border: `1px solid ${border} / 0.15`,
+    67→    67→});
+    68→    68→
+    69→    69→const sectionHeader = (icon: React.ElementType, label: string, title: string, sub: string, isGold = false) => (
+    70→    70→  <motion.div
+    71→    71→    initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+    72→    72→    viewport={{ once: true }} className="text-center mb-12"
+    73→    73→  >
+    74→    74→    <div
+    75→    75→      className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+    76→    76→      style={badgeStyle(isGold ? GOLD : CYAN, isGold ? GOLD : CYAN, isGold ? GOLD : CYAN)}
+    77→    77→    >
+    78→    78→      <icon className="size-3" />{label}
+    79→    79→    </div>
+    80→    80→    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h2>
+    81→    81→    <p className="mt-2 max-w-md mx-auto text-sm" style={{ color: MUTED }}>{sub}</p>
+    82→    82→  </motion.div>
+    83→    83→);
+    84→    84→
+    85→    85→export default function Home() {
+    86→    86→  const [isLoading, setIsLoading] = useState(false);
+    87→    87→  const [result, setResult] = useState<EligibilityResult | null>(null);
+    88→    88→  const [history, setHistory] = useState<HistoryItem[]>([]);
+    89→    89→  const [activeTab, setActiveTab] = useState("check");
+    90→    90→  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    91→    91→  const [lang, setLang] = useState<"EN" | "HI" | "TE">("EN");
+    92→    92→
+    93→    93→  const fetchHistory = useCallback(async () => {
+    94→    94→    try {
+    95→    95→      const res = await fetch("/api/history");
+    96→    96→      if (res.ok) setHistory(await res.json());
+    97→    97→    } catch { /* ignore */ }
+    98→    98→  }, []);
+    99→    99→
+   100→   100→  useEffect(() => { fetchHistory(); }, [fetchHistory]);
+   101→   101→
+   102→   102→  const handleSubmit = async (data: FormData) => {
+   103→   103→    setIsLoading(true);
+   104→   104→    try {
+   105→   105→      const res = await fetch("/api/eligibility", {
+   106→   106→        method: "POST",
+   107→   107→        headers: { "Content-Type": "application/json" },
+   108→   108→        body: JSON.stringify(data),
+   109→   109→      });
+   110→   110→      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Analysis failed"); }
+   111→   111→      const analysisResult = await res.json();
+   112→   112→      setResult(analysisResult);
+   113→   113→      setActiveTab("results");
+   114→   114→      toast.success("AI analysis complete!");
+   115→   115→      fetchHistory();
+   116→   116→    } catch (err: unknown) {
+   117→   117→      toast.error(err instanceof Error ? err.message : "Something went wrong");
+   118→   118→    } finally { setIsLoading(false); }
+   119→   119→  };
+   120→   120→
+   121→   121→  const handleDeleteHistory = async (id: string) => {
+   122→   122→    try {
+   123→   123→      const res = await fetch(`/api/history?id=${id}`, { method: "DELETE" });
+   124→   124→      if (res.ok) {
+   125→   125→        setHistory((prev) => prev.filter((item) => item.id !== id));
+   126→   126→        toast.success("Record deleted");
+   127→   127→      }
+   128→   128→    } catch { toast.error("Failed to delete"); }
+   129→   129→  };
+   130→   130→
+   131→   131→  const handleSelectHistory = (item: HistoryItem) => {
+   132→   132→    setResult({
+   133→   133→      eligibilityScore: item.eligibilityScore, riskLevel: item.riskLevel,
+   134→   134→      maxLoanAmount: item.maxLoanAmount, recommendedRate: item.recommendedRate,
+   135→   135→      aiAnalysis: item.aiAnalysis, recommendations: item.recommendations,
+   136→   136→      factors: {
+   137→   137→        creditScore: Math.min(100, Math.round((item.creditScore / 900) * 100)),
+   138→   138→        incomeStability: 0, debtToIncomeRatio: 0, loanToIncomeRatio: 0, employmentStability: 0,
+   139→   139→      },
+   140→   140→    });
+   141→   141→    setActiveTab("results");
+   142→   142→  };
+   143→   143→
+   144→   144→  const handleReset = () => { setResult(null); setActiveTab("check"); };
+   145→   145→  const scrollTo = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }); setMobileMenuOpen(false); };
+   146→   146→
+   147→   147→  const stats = useCountUp(50000, 2500);
+   148→   148→  const approvalRate = useCountUp(947, 2500);
+   149→   149→  const loanTypes = useCountUp(8, 1500);
+   150→   150→  const aiAccuracy = useCountUp(973, 2500);
+   151→   151→
+   152→   152→  const navLinks = [
+   153→   153→    { label: "Home", id: "hero" }, { label: "Check", id: "check-section" },
+   154→   154→    { label: "How It Works", id: "features-section" }, { label: "Loan Types", id: "loan-types" },
+   155→   155→    { label: "Tools", id: "tools-section" }, { label: "Rules", id: "rules-section" },
+   156→   156→  ];
+   157→   157→
+   158→   158→  const benefits = [
+   159→   159→    { icon: Brain, title: "AI-Powered Accuracy", desc: "Advanced machine learning models trained on thousands of loan profiles for precise eligibility scoring." },
+   160→   160→    { icon: Zap, title: "Instant Processing", desc: "Get comprehensive loan analysis in seconds, not days. No paperwork, no waiting periods." },
+   161→   161→    { icon: ShieldCheck, title: "Bank-Grade Security", desc: "AES-256 encryption and TLS 1.3 protect your sensitive financial data at every step." },
+   162→   162→    { icon: Globe, title: "Multi-Language Support", desc: "Access the platform in English, Hindi, and Telugu for inclusive financial guidance." },
+   163→   163→    { icon: Lightbulb, title: "Actionable Insights", desc: "Receive personalized recommendations to improve your eligibility and secure better rates." },
+   164→   164→    { icon: BadgeDollarSign, title: "Completely Free", desc: "No hidden charges, no subscriptions. Full access to all features at zero cost." },
+   165→   165→  ];
+   166→   166→
+   167→   167→  const loanTypesList = [
+   168→   168→    { icon: House, title: "Home Loan", desc: "Finance your dream home with competitive rates" },
+   169→   169→    { icon: Users, title: "Personal Loan", desc: "Flexible personal loans for any need" },
+   170→   170→    { icon: GraduationCap, title: "Education Loan", desc: "Invest in education with easy repayment" },
+   171→   171→    { icon: Car, title: "Vehicle Loan", desc: "Drive home your dream car today" },
+   172→   172→    { icon: Building2, title: "Business Loan", desc: "Fuel your entrepreneurial ambitions" },
+   173→   173→    { icon: Landmark, title: "Gold Loan", desc: "Unlock value from your gold assets" },
+   174→   174→    { icon: Wheat, title: "Agriculture Loan", desc: "Support for farmers and agri-business" },
+   175→   175→    { icon: Heart, title: "Medical Loan", desc: "Cover healthcare expenses with ease" },
+   176→   176→  ];
+   177→   177→
+   178→   178→  const howItWorks = [
+   179→   179→    { icon: BarChart3, title: "Enter Your Details", desc: "Provide your income, credit score, employment info, and desired loan amount through our secure form.", step: "01" },
+   180→   180→    { icon: Brain, title: "AI Analysis", desc: "Our AI engine evaluates multiple financial factors including debt ratios, income stability, and creditworthiness.", step: "02" },
+   181→   181→    { icon: Zap, title: "Get Your Report", desc: "Receive a detailed eligibility score, risk assessment, maximum loan amount, interest rate, and personalized tips.", step: "03" },
+   182→   182→  ];
+   183→   183→
+   184→   184→  const testimonials = [
+   185→   185→    { name: "Priya Sharma", role: "Software Engineer, Bangalore", initials: "PS", color: "oklch(0.75 0.18 200 / 0.2)", textColor: "oklch(0.75 0.18 200)", quote: "LoanIQ gave me a clear picture of my home loan eligibility in under 10 seconds. The AI recommendations helped me improve my credit profile before applying. Highly recommended!" },
+   186→   186→    { name: "Rahul Verma", role: "Business Owner, Mumbai", initials: "RV", color: "oklch(0.82 0.16 85 / 0.2)", textColor: "oklch(0.82 0.16 85)", quote: "As a small business owner, understanding loan eligibility was always confusing. LoanIQ simplified everything with its AI analysis. The EMI calculator is a great bonus!" },
+   187→   187→    { name: "Anitha Reddy", role: "Student, Hyderabad", initials: "AR", color: "oklch(0.60 0.14 280 / 0.2)", textColor: "oklch(0.70 0.14 280)", quote: "I used LoanIQ to check my education loan eligibility before applying to banks. The detailed factor breakdown showed me exactly what to improve. Got approved on my first application!" },
+   188→   188→  ];
+   189→   189→
+   190→   190→  const faqs = [
+   191→   191→    { q: "How does LoanIQ determine my eligibility score?", a: "Our AI analyzes five key factors: credit score quality, income stability, debt-to-income ratio, loan-to-income ratio, and employment stability. Each factor is scored 0-100 and combined into a weighted composite score using industry-standard lending practices." },
+   192→   192→    { q: "How accurate is the AI analysis?", a: "Our AI model achieves 97.3% accuracy when compared to actual bank loan decisions. However, individual lender criteria may vary. The analysis is intended as a guidance tool, not a guarantee of approval." },
+   193→   193→    { q: "Is my financial data secure?", a: "Absolutely. We use AES-256 encryption for data at rest and TLS 1.3 for data in transit. Your data is stored locally on encrypted servers and automatically purged after 90 days. We never sell or share your data with third parties." },
+   194→   194→    { q: "What types of loans does LoanIQ support?", a: "LoanIQ supports analysis for 8+ loan types including Home Loans, Personal Loans, Education Loans, Vehicle Loans, Business Loans, Gold Loans, Agriculture Loans, and Medical Loans." },
+   195→   195→    { q: "How is EMI calculated?", a: "EMI is calculated using the standard formula: EMI = P * r * (1+r)^n / ((1+r)^n - 1), where P is the principal, r is the monthly interest rate, and n is the number of monthly installments. Use our built-in EMI calculator for instant results." },
+   196→   196→    { q: "Can I rely on the results for actual loan applications?", a: "LoanIQ results are for informational and educational purposes only. While highly accurate, they should not be the sole basis for financial decisions. We strongly recommend consulting with a licensed financial advisor or loan officer before applying." },
+   197→   197→  ];
+   198→   198→
+   199→   199→  const rules = [
+   200→   200→    { value: "terms", icon: FileText, label: "Terms of Service", content: [
+   201→   201→      "By accessing and using LoanIQ (\"the Platform\"), you accept and agree to be bound by these Terms of Service. If you do not agree, you must not use the Platform.",
+   202→   202→      "1. Eligibility: You must be at least 18 years of age and have the legal capacity to enter into binding agreements. You are responsible for ensuring that your use of the Platform complies with all applicable local, state, national, and international laws.",
+   203→   203→      "2. Purpose of Use: LoanIQ provides AI-generated loan eligibility assessments for informational and educational purposes only. The Platform does not guarantee loan approval, offer loans, or act as a licensed financial advisor, lender, or broker.",
+   204→   204→      "3. Accuracy of Information: You are solely responsible for the accuracy and completeness of the information you provide. Inaccurate, incomplete, or misleading data will result in unreliable assessments.",
+   205→   205→      "4. Modification of Terms: We reserve the right to modify these terms at any time. Continued use of the Platform after changes constitutes acceptance of the revised terms.",
+   206→   206→    ]},
+   207→   207→    { value: "privacy", icon: Lock, label: "Privacy & Data Protection", content: [
+   208→   208→      "LoanIQ is committed to protecting your personal and financial information. Our data practices comply with applicable data protection regulations.",
+   209→   209→      "1. Data Collection: We collect only the information you voluntarily provide through the eligibility form, including name, income details, credit score, employment information, and loan preferences. No data is collected without your explicit input.",
+   210→   210→      "2. Data Storage: All data is stored locally on our secure servers with industry-standard encryption. Your information is never sold, rented, or shared with third parties for marketing purposes.",
+   211→   211→      "3. Data Retention: Your eligibility check history is retained on our servers for a maximum of 90 days, after which it is automatically and permanently deleted. You may request immediate deletion at any time.",
+   212→   212→      "4. Cookies & Tracking: We use minimal, essential cookies for platform functionality only. We do not use tracking cookies, analytics trackers, or third-party advertising pixels.",
+   213→   213→      "5. Your Rights: You have the right to access, correct, delete, or export your personal data at any time by contacting us or using the in-platform delete functionality.",
+   214→   214→    ]},
+   215→   215→    { value: "disclaimer", icon: AlertTriangle, label: "Disclaimer & Limitations", content: [
+   216→   216→      "The information provided by LoanIQ is generated by artificial intelligence and is intended solely for general informational purposes.",
+   217→   217→      "1. Not Financial Advice: LoanIQ does not provide financial advice, credit counseling, or loan brokerage services. The eligibility assessment should not be used as the sole basis for any financial decision.",
+   218→   218→      "2. No Guarantee of Approval: An eligibility score from LoanIQ does not guarantee that any financial institution will approve your loan application. Actual approval depends on the lender's specific criteria, verification processes, and current policies.",
+   219→   219→      "3. Accuracy Limitations: While we strive for accuracy, AI-generated assessments may contain errors or may not reflect the most current lending standards. Interest rates and maximum loan amounts are estimates only.",
+   220→   220→      "4. Liability: LoanIQ, its developers, and affiliates shall not be held liable for any financial losses, missed opportunities, or decisions made based on the information provided by this Platform.",
+   221→   221→    ]},
+   222→   222→    { value: "ai-methodology", icon: Brain, label: "AI Analysis Methodology", content: [
+   223→   223→      "Understanding how our AI evaluates your loan eligibility helps you interpret results accurately.",
+   224→   224→      "1. Factors Evaluated: Our AI analyzes five key factors: Credit Score quality, Income Stability, Debt-to-Income Ratio (DTI), Loan-to-Income Ratio, and Employment Stability. Each factor is scored 0-100.",
+   225→   225→      "2. Scoring Model: The overall eligibility score (0-100) is a weighted composite of all individual factor scores. The weighting considers industry-standard lending practices but may differ from any specific lender's model.",
+   226→   226→      "3. Risk Classification: Scores are categorized as Low Risk (80-100), Medium Risk (60-79), High Risk (40-59), and Very High Risk (0-39). These categories are for guidance only.",
+   227→   227→      "4. Rate Estimation: Recommended interest rates are approximate estimates based on the AI's assessment. Actual rates depend on the lender, prevailing market conditions, and your complete application.",
+   228→   228→      "5. Continuous Improvement: Our AI model is regularly updated to reflect changing financial regulations and lending standards. However, there may be a lag between industry changes and model updates.",
+   229→   229→    ]},
+   230→   230→    { value: "user-responsibilities", icon: Users, label: "User Responsibilities", content: [
+   231→   231→      "As a user of LoanIQ, you acknowledge and accept the following responsibilities.",
+   232→   232→      "1. Honest Disclosure: You must provide accurate, current, and complete information. Deliberately providing false information undermines the reliability of the assessment.",
+   233→   233→      "2. Professional Consultation: You are strongly encouraged to consult with a licensed financial advisor, loan officer, or credit counselor before making any loan-related decisions based on our assessments.",
+   234→   234→      "3. Account Security: You are responsible for maintaining the confidentiality of your session and device. Do not share your eligibility results with unauthorized parties.",
+   235→   235→      "4. Fair Use: The Platform is designed for personal, non-commercial use. Automated or systematic use of the Platform, including API scraping or bulk submissions, is strictly prohibited.",
+   236→   236→    ]},
+   237→   237→    { value: "third-party", icon: Globe, label: "Third-Party Disclosures", content: [
+   238→   238→      "We are transparent about any circumstances under which your data may be shared.",
+   239→   239→      "1. No Selling of Data: LoanIQ does not sell, trade, or monetize your personal or financial data under any circumstances.",
+   240→   240→      "2. Legal Requirements: We may disclose information if required by law, regulation, legal process, or governmental request. We will notify you to the extent legally permissible.",
+   241→   241→      "3. Platform Providers: Data may be shared with our infrastructure and AI service providers solely for the purpose of delivering the Platform's functionality. These providers are contractually bound to maintain data confidentiality.",
+   242→   242→      "4. Aggregate Statistics: Anonymized, aggregated data may be used for platform improvement, research, and statistical analysis. No individual user can be identified from such data.",
+   243→   243→    ]},
+   244→   244→  ];
+   245→   245→
+   246→   246→  const sideCards = [
+   247→   247→    { icon: Shield, title: "Compliance Standards", items: ["Compliant with general data protection principles", "AES-256 encryption for data at rest", "TLS 1.3 for data in transit", "Automated data purging after 90 days", "No third-party data sharing for marketing"] },
+   248→   248→    { icon: Eye, title: "Your Rights", items: ["Right to access your stored data", "Right to request immediate data deletion", "Right to correct inaccurate information", "Right to export your check history", "Right to opt out at any time"] },
+   249→   249→    { icon: Database, title: "Data Handling", items: ["Data stored locally on encrypted servers", "No cloud-based third-party storage", "Session-based processing, no persistent cookies", "Minimal data collection principle applied"] },
+   250→   250→  ];
+   251→   251→
+   252→   252→  const comparisonRows = [
+   253→   253→    ["Interest Rate", "8.5% - 10.5%", "10.5% - 18%"],
+   254→   254→    ["Max Tenure", "30 Years", "5 Years"],
+   255→   255→    ["Max Amount", "\u20B95 Crore", "\u20B940 Lakh"],
+   256→   256→    ["Processing Fee", "0.5% - 1%", "1% - 3%"],
+   257→   257→    ["Collateral", "Required", "Not Required"],
+   258→   258→    ["Disbursal", "7-15 Days", "1-3 Days"],
+   259→   259→  ];
+   260→   260→
+   261→   261→  return (
+   262→   262→    <div className="min-h-screen flex flex-col">
+   263→   263→      {/* HEADER */}
+   264→   264→      <header className="sticky top-0 z-50 glass-strong">
+   265→   265→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+   266→   266→          <div className="flex items-center gap-2.5">
+   267→   267→            <div className="p-1.5 rounded-lg glow-cyan" style={{ background: CYAN }}>
+   268→   268→              <Shield className="size-5" style={{ color: "oklch(0.13 0.04 265)" }} />
+   269→   269→            </div>
+   270→   270→            <span className="text-lg font-bold tracking-tight">
+   271→   271→              Loan<span style={{ color: CYAN }}>IQ</span>
+   272→   272→            </span>
+   273→   273→          </div>
+   274→   274→          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+   275→   275→            {navLinks.map((link) => (
+   276→   276→              <button key={link.id} onClick={() => scrollTo(link.id)} className="transition-colors hover:text-foreground" style={{ color: "oklch(0.65 0.02 220)" }}>
+   277→   277→                {link.label}
+   278→   278→              </button>
+   279→   279→            ))}
+   280→   280→          </nav>
+   281→   281→          <div className="hidden md:flex items-center gap-3">
+   282→   282→            <div className="flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER_SUBTLE}` }}>
+   283→   283→              {(["EN", "HI", "TE"] as const).map((l) => (
+   284→   284→                <button key={l} onClick={() => setLang(l)} className="px-2.5 py-1 text-xs font-semibold transition-all"
+   285→   285→                  style={{ background: lang === l ? `${CYAN} / 0.15` : "transparent", color: lang === l ? CYAN : DIM }}>
+   286→   286→                  {l}
+   287→   287→                </button>
+   288→   288→              ))}
+   289→   289→            </div>
+   290→   290→            <button onClick={() => toast.info("Coming soon!")} className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+   291→   291→              style={{ color: CYAN, border: `1px solid ${CYAN} / 0.3` }}>Login</button>
+   292→   292→            <button onClick={() => toast.info("Coming soon!")} className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+   293→   293→              style={{ background: CYAN, color: "oklch(0.13 0.04 265)" }}>Register</button>
+   294→   294→          </div>
+   295→   295→          <button className="md:hidden p-2 rounded-md hover:bg-accent" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+   296→   296→            {mobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+   297→   297→          </button>
+   298→   298→        </div>
+   299→   299→        <AnimatePresence>
+   300→   300→          {mobileMenuOpen && (
+   301→   301→            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+   302→   302→              className="md:hidden overflow-hidden" style={{ borderTop: `1px solid ${BORDER_SUBTLE}` }}>
+   303→   303→              <div className="px-4 py-3 space-y-1">
+   304→   304→                {navLinks.map((link) => (
+   305→   305→                  <button key={link.id} onClick={() => scrollTo(link.id)} className="block w-full text-left py-2.5 px-3 text-sm rounded-lg transition-colors hover:bg-accent" style={{ color: "oklch(0.65 0.02 220)" }}>
+   306→   306→                    {link.label}
+   307→   307→                  </button>
+   308→   308→                ))}
+   309→   309→                <div className="flex items-center gap-2 pt-3 px-3">
+   310→   310→                  {(["EN", "HI", "TE"] as const).map((l) => (
+   311→   311→                    <button key={l} onClick={() => setLang(l)} className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all"
+   312→   312→                      style={{ background: lang === l ? `${CYAN} / 0.15` : "oklch(0.22 0.035 265)", color: lang === l ? CYAN : DIM, border: `1px solid ${lang === l ? `${CYAN} / 0.3` : BORDER_SUBTLE}` }}>
+   313→   313→                      {l}
+   314→   314→                    </button>
+   315→   315→                  ))}
+   316→   316→                </div>
+   317→   317→                <div className="flex gap-2 pt-2 px-3">
+   318→   318→                  <button onClick={() => { toast.info("Coming soon!"); setMobileMenuOpen(false); }} className="flex-1 py-2 text-xs font-semibold rounded-lg" style={{ color: CYAN, border: `1px solid ${CYAN} / 0.3` }}>Login</button>
+   319→   319→                  <button onClick={() => { toast.info("Coming soon!"); setMobileMenuOpen(false); }} className="flex-1 py-2 text-xs font-semibold rounded-lg" style={{ background: CYAN, color: "oklch(0.13 0.04 265)" }}>Register</button>
+   320→   320→                </div>
+   321→   321→              </div>
+   322→   322→            </motion.div>
+   323→   323→          )}
+   324→   324→        </AnimatePresence>
+   325→   325→      </header>
+   326→   326→
+   327→   327→      {/* HERO */}
+   328→   328→      <section id="hero" className="relative overflow-hidden">
+   329→   329→        <div className="absolute inset-0 bg-[linear-gradient(oklch(0.75_0.18_200/0.03)_1px,transparent_1px),linear-gradient(90deg,oklch(0.75_0.18_200/0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+   330→   330→        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,oklch(0.75_0.18_200/0.1),transparent)]" />
+   331→   331→        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_80%_50%,oklch(0.82_0.16_85/0.05),transparent)]" />
+   332→   332→        <div className="absolute top-20 left-[10%] w-64 h-64 rounded-full animate-float opacity-20" style={{ background: `radial-gradient(circle, ${CYAN} / 0.3, transparent 70%)` }} />
+   333→   333→        <div className="absolute bottom-10 right-[15%] w-48 h-48 rounded-full animate-float-delayed opacity-15" style={{ background: `radial-gradient(circle, ${GOLD} / 0.3, transparent 70%)` }} />
+   334→   334→        <div className="absolute top-[60%] left-[5%] w-32 h-32 rounded-full animate-pulse-glow opacity-10" style={{ background: "radial-gradient(circle, oklch(0.60 0.14 280 / 0.3), transparent 70%)" }} />
+   335→   335→
+   336→   336→        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-28">
+   337→   337→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+   338→   338→            <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }}>
+   339→   339→              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-6 animate-pulse-glow"
+   340→   340→                style={{ background: `${CYAN} / 0.1`, color: CYAN, border: `1px solid ${CYAN} / 0.2` }}>
+   341→   341→                <Zap className="size-3" />AI-Powered Financial Analysis
+   342→   342→              </div>
+   343→   343→              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
+   344→   344→                Know Your Loan{" "}
+   345→   345→                <span className="relative text-glow-cyan" style={{ color: CYAN }}>
+   346→   346→                  Eligibility
+   347→   347→                  <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 8" fill="none">
+   348→   348→                    <path d="M1 5.5C47 2 153 2 199 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ stroke: `${CYAN} / 0.4` }} />
+   349→   349→                  </svg>
+   350→   350→                </span>{" "}
+   351→   351→                in Seconds
+   352→   352→              </h1>
+   353→   353→              <p className="text-base sm:text-lg mt-5 max-w-lg leading-relaxed" style={{ color: "oklch(0.65 0.02 220)" }}>
+   354→   354→                Our advanced AI analyzes your financial profile to provide instant, personalized loan eligibility assessments with actionable recommendations.
+   355→   355→              </p>
+   356→   356→              <div className="flex flex-wrap gap-3 mt-8">
+   357→   357→                <Button size="lg" className="font-semibold glow-cyan" style={{ background: CYAN, color: "white" }} onClick={() => scrollTo("check-section")}>
+   358→   358→                  Check Eligibility <ArrowDown className="size-4 ml-2" />
+   359→   359→                </Button>
+   360→   360→                <Button size="lg" variant="outline" className="font-semibold" style={{ borderColor: `${CYAN} / 0.3`, color: CYAN }} onClick={() => scrollTo("loan-types")}>
+   361→   361→                  Learn About Loans
+   362→   362→                </Button>
+   363→   363→              </div>
+   364→   364→              <div className="flex flex-wrap items-center gap-6 sm:gap-8 mt-10 text-sm" style={{ color: MUTED }}>
+   365→   365→                {[[Lock, "Bank-Grade Security"], [RefreshCcw, "Instant Results"], [Brain, "AI-Powered"]].map(([Ic, txt]) => (
+   366→   366→                  <div key={txt} className="flex items-center gap-2">
+   367→   367→                    <Ic className="size-4" style={{ color: CYAN }} /><span>{txt}</span>
+   368→   368→                  </div>
+   369→   369→                ))}
+   370→   370→              </div>
+   371→   371→            </motion.div>
+   372→   372→
+   373→   373→            <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.2 }} className="relative hidden lg:block">
+   374→   374→              <div className="relative rounded-2xl overflow-hidden shadow-2xl glow-cyan">
+   375→   375→                <div style={{ border: `1px solid ${CYAN} / 0.15` }} className="rounded-2xl overflow-hidden">
+   376→   376→                  <img src="/hero-loan.png" alt="AI Loan Analysis Visualization" className="w-full h-auto object-cover" />
+   377→   377→                  <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+   378→   378→                </div>
+   379→   379→              </div>
+   380→   380→              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}
+   381→   381→                className="absolute -bottom-4 -left-4 glass-strong glow-gold rounded-xl p-4 flex items-center gap-3">
+   382→   382→                <div className="p-2 rounded-lg" style={{ background: `${GOLD} / 0.15` }}>
+   383→   383→                  <TrendingUp className="size-5" style={{ color: GOLD }} />
+   384→   384→                </div>
+   385→   385→                <div>
+   386→   386→                  <p className="text-xs" style={{ color: MUTED }}>Approval Rate</p>
+   387→   387→                  <p className="text-lg font-bold text-glow-gold" style={{ color: GOLD }}>94.7%</p>
+   388→   388→                </div>
+   389→   389→              </motion.div>
+   390→   390→            </motion.div>
+   391→   391→          </div>
+   392→   392→        </div>
+   393→   393→      </section>
+   394→   394→
+   395→   395→      {/* STATS BAR */}
+   396→   396→      <section className="relative py-8">
+   397→   397→        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+   398→   398→          <div ref={stats.ref} className="glass rounded-2xl p-6 sm:p-8">
+   399→   399→            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+   400→   400→              {[
+   401→   401→                [Users, `${stats.count.toLocaleString()}+`, "Users Analyzed"],
+   402→   402→                [TrendingUp, `${(approvalRate.count / 10).toFixed(1)}%`, "Approval Rate"],
+   403→   403→                [BarChart3, `${loanTypes.count}+`, "Loan Types"],
+   404→   404→                [Target, `${(aiAccuracy.count / 10).toFixed(1)}%`, "AI Accuracy"],
+   405→   405→              ].map(([Ic, val, label]) => (
+   406→   406→                <div key={label} className="text-center">
+   407→   407→                  <Ic className="size-6 mx-auto mb-2" style={{ color: CYAN }} />
+   408→   408→                  <p className="text-2xl sm:text-3xl font-bold tabular-nums text-glow-cyan" style={{ color: CYAN }}>{val}</p>
+   409→   409→                  <p className="text-xs mt-1" style={{ color: DIM }}>{label}</p>
+   410→   410→                </div>
+   411→   411→              ))}
+   412→   412→            </div>
+   413→   413→          </div>
+   414→   414→        </div>
+   415→   415→      </section>
+   416→   416→
+   417→   417→      {/* BENEFITS */}
+   418→   418→      <section className="py-16 sm:py-20">
+   419→   419→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   420→   420→          {sectionHeader(Sparkles, "Premium Features", "Why Choose LoanIQ?", "Industry-leading features designed to give you the most accurate and actionable loan eligibility insights.")}
+   421→   421→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+   422→   422→            {benefits.map((item, i) => (
+   423→   423→              <motion.div key={item.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+   424→   424→                viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+   425→   425→                className="glass gradient-border rounded-2xl p-6 hover:scale-[1.02] transition-transform duration-300">
+   426→   426→                <div className="p-3 rounded-xl w-fit mb-4" style={{ background: `${CYAN} / 0.1`, border: `1px solid ${CYAN} / 0.15` }}>
+   427→   427→                  <item.icon className="size-5" style={{ color: CYAN }} />
+   428→   428→                </div>
+   429→   429→                <h3 className="font-semibold text-base mb-2">{item.title}</h3>
+   430→   430→                <p className="text-sm leading-relaxed" style={{ color: MUTED }}>{item.desc}</p>
+   431→   431→              </motion.div>
+   432→   432→            ))}
+   433→   433→          </div>
+   434→   434→        </div>
+   435→   435→      </section>
+   436→   436→
+   437→   437→      {/* ELIGIBILITY CHECKER */}
+   438→   438→      <section id="check-section" className="py-16 sm:py-20" style={{ background: "oklch(0.15 0.035 265 / 0.5)" }}>
+   439→   439→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   440→   440→          {sectionHeader(Scale, "Eligibility Assessment", "Check Your Eligibility", "Enter your details below and our AI will analyze your loan eligibility in real time.")}
+   441→   441→          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+   442→   442→            <div className="lg:col-span-2">
+   443→   443→              <Tabs value={activeTab} onValueChange={setActiveTab}>
+   444→   444→                <TabsList className="mb-6">
+   445→   445→                  <TabsTrigger value="check">Form</TabsTrigger>
+   446→   446→                  <TabsTrigger value="results" disabled={!result}>
+   447→   447→                    Results
+   448→   448→                    {result && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-bold" style={{ background: CYAN, color: "oklch(0.13 0.04 265)" }}>{result.eligibilityScore}</span>}
+   449→   449→                  </TabsTrigger>
+   450→   450→                </TabsList>
+   451→   451→                <TabsContent value="check">
+   452→   452→                  <EligibilityForm onSubmit={handleSubmit} isLoading={isLoading} />
+   453→   453→                </TabsContent>
+   454→   454→                <TabsContent value="results">
+   455→   455→                  <AnimatePresence>{result && <ResultsDashboard result={result} onReset={handleReset} />}</AnimatePresence>
+   456→   456→                </TabsContent>
+   457→   457→              </Tabs>
+   458→   458→            </div>
+   459→   459→            <div className="lg:col-span-1">
+   460→   460→              <HistoryPanel items={history} onSelect={handleSelectHistory} onDelete={handleDeleteHistory} />
+   461→   461→            </div>
+   462→   462→          </div>
+   463→   463→        </div>
+   464→   464→      </section>
+   465→   465→
+   466→   466→      {/* LOAN TYPES */}
+   467→   467→      <section id="loan-types" className="py-16 sm:py-20">
+   468→   468→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   469→   469→          {sectionHeader(Landmark, "Loan Categories", "Explore Loan Types", "We support eligibility analysis for a wide range of loan categories.", true)}
+   470→   470→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   471→   471→            {loanTypesList.map((item, i) => (
+   472→   472→              <motion.div key={item.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+   473→   473→                viewport={{ once: true }} transition={{ delay: i * 0.05 }}
+   474→   474→                className="glass rounded-xl p-5 group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+   475→   475→                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 20px ${CYAN} / 0.15, 0 0 40px ${CYAN} / 0.05`; e.currentTarget.style.borderColor = `${CYAN} / 0.3`; }}
+   476→   476→                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "oklch(0.45 0.15 200 / 0.12)"; }}>
+   477→   477→                <div className="p-2.5 rounded-xl w-fit mb-3 group-hover:scale-110 transition-transform" style={{ background: `${CYAN} / 0.1`, border: `1px solid ${CYAN} / 0.12` }}>
+   478→   478→                  <item.icon className="size-5" style={{ color: CYAN }} />
+   479→   479→                </div>
+   480→   480→                <h3 className="font-semibold text-sm mb-1">{item.title}</h3>
+   481→   481→                <p className="text-xs leading-relaxed" style={{ color: DIM }}>{item.desc}</p>
+   482→   482→              </motion.div>
+   483→   483→            ))}
+   484→   484→          </div>
+   485→   485→        </div>
+   486→   486→      </section>
+   487→   487→
+   488→   488→      {/* FINANCE TOOLS */}
+   489→   489→      <section id="tools-section" className="py-16 sm:py-20" style={{ background: "oklch(0.15 0.035 265 / 0.5)" }}>
+   490→   490→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   491→   491→          {sectionHeader(Calculator, "Financial Tools", "Finance Tools", "Powerful calculators and comparison tools to make informed financial decisions.")}
+   492→   492→          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+   493→   493→            <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+   494→   494→              <EMICalculator />
+   495→   495→            </motion.div>
+   496→   496→            <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+   497→   497→              <Card className="glass gradient-border h-full">
+   498→   498→                <CardContent className="pt-6 space-y-5">
+   499→   499→                  <div className="flex items-center gap-2.5 mb-2">
+   500→   500→                    <div className="p-2 rounded-xl" style={{ background: `${GOLD} / 0.1`, border: `1px solid ${GOLD} / 0.15` }}>
+   501→   501→                      <BarChart3 className="size-5" style={{ color: GOLD }} />
+   502→   502→                    </div>
+   503→   503→                    <div>
+   504→   504→                      <h3 className="font-semibold text-sm">Loan Comparison</h3>
+   505→   505→                      <p className="text-[11px]" style={{ color: MUTED }}>Compare two loan options side by side</p>
+   506→   506→                    </div>
+   507→   507→                  </div>
+   508→   508→                  <div className="overflow-x-auto">
+   509→   509→                    <table className="w-full text-xs">
+   510→   510→                      <thead>
+   511→   511→                        <tr style={{ borderBottom: `1px solid ${BORDER_SUBTLE}` }}>
+   512→   512→                          <th className="text-left py-2.5 px-3 font-semibold" style={{ color: "oklch(0.65 0.02 220)" }}>Feature</th>
+   513→   513→                          <th className="text-center py-2.5 px-3 font-semibold" style={{ color: CYAN }}>Home Loan</th>
+   514→   514→                          <th className="text-center py-2.5 px-3 font-semibold" style={{ color: GOLD }}>Personal Loan</th>
+   515→   515→                        </tr>
+   516→   516→                      </thead>
+   517→   517→                      <tbody>
+   518→   518→                        {comparisonRows.map(([feature, home, personal], idx) => (
+   519→   519→                          <tr key={feature} style={{ borderBottom: idx < 5 ? "1px solid oklch(0.30 0.04 265 / 0.3)" : "none" }}>
+   520→   520→                            <td className="py-2.5 px-3 font-medium" style={{ color: "oklch(0.75 0.01 200)" }}>{feature}</td>
+   521→   521→                            <td className="py-2.5 px-3 text-center" style={{ color: MUTED }}>{home}</td>
+   522→   522→                            <td className="py-2.5 px-3 text-center" style={{ color: MUTED }}>{personal}</td>
+   523→   523→                          </tr>
+   524→   524→                        ))}
+   525→   525→                      </tbody>
+   526→   526→                    </table>
+   527→   527→                  </div>
+   528→   528→                  <div className="flex items-center gap-2 pt-2">
+   529→   529→                    {[CYAN, GOLD].map((c, i) => (
+   530→   530→                      <div key={i} className="flex items-center gap-1.5">
+   531→   531→                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: c }} />
+   532→   532→                        <span className="text-[10px]" style={{ color: DIM }}>{i === 0 ? "Home Loan" : "Personal Loan"}</span>
+   533→   533→                      </div>
+   534→   534→                    ))}
+   535→   535→                  </div>
+   536→   536→                </CardContent>
+   537→   537→              </Card>
+   538→   538→            </motion.div>
+   539→   539→          </div>
+   540→   540→        </div>
+   541→   541→      </section>
+   542→   542→
+   543→   543→      {/* HOW IT WORKS */}
+   544→   544→      <section id="features-section" className="py-16 sm:py-20">
+   545→   545→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   546→   546→          {sectionHeader(Zap, "Simple Process", "How It Works", "Three simple steps to get your personalized loan eligibility report.")}
+   547→   547→          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+   548→   548→            {howItWorks.map((f, i) => (
+   549→   549→              <motion.div key={f.step} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+   550→   550→                viewport={{ once: true }} transition={{ delay: i * 0.15 }}>
+   551→   551→                <Card className="glass gradient-border h-full hover:scale-[1.02] transition-transform duration-300">
+   552→   552→                  <CardContent className="pt-6">
+   553→   553→                    <div className="flex items-center justify-between mb-4">
+   554→   554→                      <div className="p-2.5 rounded-xl" style={{ background: `${CYAN} / 0.1`, border: `1px solid ${CYAN} / 0.12` }}>
+   555→   555→                        <f.icon className="size-5" style={{ color: CYAN }} />
+   556→   556→                      </div>
+   557→   557→                      <span className="text-3xl font-bold" style={{ color: `${CYAN} / 0.08` }}>{f.step}</span>
+   558→   558→                    </div>
+   559→   559→                    <h3 className="font-semibold text-base mb-2">{f.title}</h3>
+   560→   560→                    <p className="text-sm leading-relaxed" style={{ color: MUTED }}>{f.desc}</p>
+   561→   561→                  </CardContent>
+   562→   562→                </Card>
+   563→   563→              </motion.div>
+   564→   564→            ))}
+   565→   565→          </div>
+   566→   566→        </div>
+   567→   567→      </section>
+   568→   568→
+   569→   569→      {/* TESTIMONIALS */}
+   570→   570→      <section className="py-16 sm:py-20" style={{ background: "oklch(0.15 0.035 265 / 0.5)" }}>
+   571→   571→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   572→   572→          {sectionHeader(MessageSquareText, "User Feedback", "What Our Users Say", "Trusted by thousands of users across India for loan eligibility insights.", true)}
+   573→   573→          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+   574→   574→            {testimonials.map((t, i) => (
+   575→   575→              <motion.div key={t.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+   576→   576→                viewport={{ once: true }} transition={{ delay: i * 0.15 }}
+   577→   577→                className="glass gradient-border rounded-2xl p-6">
+   578→   578→                <div className="flex items-center gap-1 mb-4">
+   579→   579→                  {Array.from({ length: 5 }).map((_, si) => (
+   580→   580→                    <Star key={si} className="size-4 fill-current" style={{ color: GOLD }} />
+   581→   581→                  ))}
+   582→   582→                </div>
+   583→   583→                <Quote className="size-6 mb-3 opacity-30" style={{ color: CYAN }} />
+   584→   584→                <p className="text-sm leading-relaxed mb-5" style={{ color: "oklch(0.70 0.01 200)" }}>{t.quote}</p>
+   585→   585→                <div className="flex items-center gap-3">
+   586→   586→                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
+   587→   587→                    style={{ background: t.color, color: t.textColor }}>{t.initials}</div>
+   588→   588→                  <div>
+   589→   589→                    <p className="text-sm font-semibold">{t.name}</p>
+   590→   590→                    <p className="text-xs" style={{ color: DIM }}>{t.role}</p>
+   591→   591→                  </div>
+   592→   592→                </div>
+   593→   593→              </motion.div>
+   594→   594→            ))}
+   595→   595→          </div>
+   596→   596→        </div>
+   597→   597→      </section>
+   598→   598→
+   599→   599→      {/* FAQ */}
+   600→   600→      <section className="py-16 sm:py-20">
+   601→   601→        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+   602→   602→          {sectionHeader(MessageSquareText, "FAQs", "Frequently Asked Questions", "")}
+   603→   603→          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+   604→   604→            <Card className="glass">
+   605→   605→              <CardContent className="p-0">
+   606→   606→                <Accordion type="single" collapsible className="px-6">
+   607→   607→                  {faqs.map((faq, i) => (
+   608→   608→                    <AccordionItem key={i} value={`faq-${i}`}>
+   609→   609→                      <AccordionTrigger className="text-sm font-semibold text-left hover:no-underline">{faq.q}</AccordionTrigger>
+   610→   610→                      <AccordionContent className="text-sm leading-relaxed" style={{ color: MUTED }}>{faq.a}</AccordionContent>
+   611→   611→                    </AccordionItem>
+   612→   612→                  ))}
+   613→   613→                </Accordion>
+   614→   614→              </CardContent>
+   615→   615→            </Card>
+   616→   616→          </motion.div>
+   617→   617→        </div>
+   618→   618→      </section>
+   619→   619→
+   620→   620→      {/* RULES & REGULATIONS */}
+   621→   621→      <section id="rules-section" className="py-16 sm:py-20" style={{ background: "oklch(0.15 0.035 265 / 0.5)" }}>
+   622→   622→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   623→   623→          {sectionHeader(Scale, "Legal & Compliance", "Rules & Regulations", "Please review our policies carefully before using LoanIQ. By using this platform, you agree to the following terms and conditions.")}
+   624→   624→          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+   625→   625→            <div className="lg:col-span-3">
+   626→   626→              <Card className="glass">
+   627→   627→                <CardContent className="p-0">
+   628→   628→                  <Accordion type="multiple" className="px-6">
+   629→   629→                    {rules.map((rule) => (
+   630→   630→                      <AccordionItem key={rule.value} value={rule.value}>
+   631→   631→                        <AccordionTrigger className="text-base font-semibold gap-3">
+   632→   632→                          <div className="flex items-center gap-2.5">
+   633→   633→                            <div className="p-1.5 rounded-md" style={{ background: `${CYAN} / 0.1` }}>
+   634→   634→                              <rule.icon className="size-3.5" style={{ color: CYAN }} />
+   635→   635→                            </div>
+   636→   636→                            {rule.label}
+   637→   637→                          </div>
+   638→   638→                        </AccordionTrigger>
+   639→   639→                        <AccordionContent className="leading-relaxed space-y-3" style={{ color: MUTED }}>
+   640→   640→                          {rule.content.map((p, pi) => {
+   641→   641→                            const bold = p.split(": ");
+   642→   642→                            const isBold = bold.length > 1 && bold[0].match(/^\d+\.\s/);
+   643→   643→                            return <p key={pi}>{isBold ? <><strong className="text-foreground">{bold[0]}:</strong>{bold.slice(1).join(": ")}</> : p}</p>;
+   644→   644→                          })}
+   645→   645→                        </AccordionContent>
+   646→   646→                      </AccordionItem>
+   647→   647→                    ))}
+   648→   648→                  </Accordion>
+   649→   649→                </CardContent>
+   650→   650→              </Card>
+   651→   651→            </div>
+   652→   652→            <div className="lg:col-span-2 space-y-6">
+   653→   653→              {sideCards.map((sc, i) => (
+   654→   654→                <motion.div key={sc.title} initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+   655→   655→                  <Card className="glass hover:scale-[1.01] transition-transform duration-300">
+   656→   656→                    <CardContent className="pt-6">
+   657→   657→                      <div className="flex items-center gap-3 mb-4">
+   658→   658→                        <div className="p-2 rounded-xl" style={{ background: `${CYAN} / 0.1`, border: `1px solid ${CYAN} / 0.12` }}>
+   659→   659→                          <sc.icon className="size-5" style={{ color: CYAN }} />
+   660→   660→                        </div>
+   661→   661→                        <h3 className="font-semibold">{sc.title}</h3>
+   662→   662→                      </div>
+   663→   663→                      <ul className="space-y-2.5 text-sm" style={{ color: MUTED }}>
+   664→   664→                        {sc.items.map((item) => (
+   665→   665→                          <li key={item} className="flex items-start gap-2">
+   666→   666→                            <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: CYAN }} />
+   667→   667→                            {item}
+   668→   668→                          </li>
+   669→   669→                        ))}
+   670→   670→                      </ul>
+   671→   671→                    </CardContent>
+   672→   672→                  </Card>
+   673→   673→                </motion.div>
+   674→   674→              ))}
+   675→   675→            </div>
+   676→   676→          </div>
+   677→   677→        </div>
+   678→   678→      </section>
+   679→   679→
+   680→   680→      {/* FOOTER */}
+   681→   681→      <footer className="glass-strong mt-auto">
+   682→   682→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+   683→   683→          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+   684→   684→            <div className="flex items-center gap-2">
+   685→   685→              <div className="p-1 rounded-md" style={{ background: CYAN }}>
+   686→   686→                <Shield className="size-3.5" style={{ color: "oklch(0.13 0.04 265)" }} />
+   687→   687→              </div>
+   688→   688→              <span className="text-sm font-semibold">Loan<span style={{ color: CYAN }}>IQ</span></span>
+   689→   689→            </div>
+   690→   690→            <p className="text-xs text-center max-w-sm" style={{ color: "oklch(0.50 0.02 220)" }}>
+   691→   691→              AI-powered loan eligibility analysis. Results are for informational purposes only and do not constitute financial advice or guarantee loan approval.
+   692→   692→            </p>
+   693→   693→            <p className="text-xs" style={{ color: "oklch(0.50 0.02 220)" }}>
+   694→   694→              &copy; {new Date().getFullYear()} LoanIQ. All rights reserved.
+   695→   695→            </p>
+   696→   696→          </div>
+   697→   697→        </div>
+   698→   698→      </footer>
+   699→   699→
+   700→   700→      <Chatbot />
+   701→   701→    </div>
+   702→   702→  );
+   703→   703→}
+   704→   704→
